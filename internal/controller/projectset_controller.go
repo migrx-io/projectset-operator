@@ -27,11 +27,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	projectsetv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
+	projectv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
 )
 
 // Finilizer name
-const projectSetFinalizer = "projectset.migrx.io/finalizer"
+const projectSetFinalizer = "projectsets.project.migrx.io/finalizer"
 
 // Definitions to manage status conditions
 const (
@@ -47,9 +47,9 @@ type ProjectSetReconciler struct {
 	Recorder record.EventRecorder
 }
 
-//+kubebuilder:rbac:groups=projectset.migrx.io,resources=projectsets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=projectset.migrx.io,resources=projectsets/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=projectset.migrx.io,resources=projectsets/finalizers,verbs=update
+//+kubebuilder:rbac:groups=project.migrx.io,resources=projectsets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=project.migrx.io,resources=projectsets/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=project.migrx.io,resources=projectsets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 
@@ -69,7 +69,7 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	//
 	// Fetch the instance
 	//
-	instance := &projectsetv1alpha1.ProjectSet{}
+	instance := &projectv1alpha1.ProjectSet{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
@@ -177,7 +177,7 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 func (r *ProjectSetReconciler) setStatus(ctx context.Context,
 	req ctrl.Request,
-	instance *projectsetv1alpha1.ProjectSet,
+	instance *projectv1alpha1.ProjectSet,
 	statusType, status, reason, message string) error {
 
 	// Set condition
@@ -203,7 +203,7 @@ func (r *ProjectSetReconciler) setStatus(ctx context.Context,
 }
 
 // Finalizers will perform the required operations before delete the CR.
-func (r *ProjectSetReconciler) doFinalizerOperations(cr *projectsetv1alpha1.ProjectSet) {
+func (r *ProjectSetReconciler) doFinalizerOperations(cr *projectv1alpha1.ProjectSet) {
 	// TODO(user): Add the cleanup steps that the operator
 	// needs to do before the CR can be deleted. Examples
 	// of finalizers include performing backups and deleting
@@ -227,7 +227,7 @@ func (r *ProjectSetReconciler) doFinalizerOperations(cr *projectsetv1alpha1.Proj
 // SetupWithManager sets up the controller with the Manager.
 func (r *ProjectSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&projectsetv1alpha1.ProjectSet{}).
+		For(&projectv1alpha1.ProjectSet{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
 		Complete(r)
 }

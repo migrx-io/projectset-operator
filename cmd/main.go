@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	projectsetv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
+	projectv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
 	"github.com/migrx-io/projectset-operator/internal/controller"
 	//+kubebuilder:scaffold:imports
 )
@@ -44,7 +44,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(projectsetv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(projectv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 

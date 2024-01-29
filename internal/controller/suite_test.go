@@ -1,5 +1,5 @@
 /*
-Copyright 2024 Anatolii Makarov.
+Copyright 2024.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	projectsetv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
+	projectv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -62,7 +62,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	err = projectsetv1alpha1.AddToScheme(scheme.Scheme)
+	err = projectv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme

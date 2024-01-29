@@ -50,10 +50,8 @@ type ProjectSetStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-//+kubebuilder:resource:shortName=ps
-//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.status",description="Status"
+//+kubebuilder:resource:shortName="ps"
 //+kubebuilder:resource:scope=Cluster
-
 
 // ProjectSet is the Schema for the projectsets API
 type ProjectSet struct {

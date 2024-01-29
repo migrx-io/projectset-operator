@@ -1,4 +1,4 @@
-apiVersion: projectset.migrx.io/v1alpha1
+apiVersion: project.migrx.io/v1alpha1
 kind: ProjectSet
 metadata:
   labels:

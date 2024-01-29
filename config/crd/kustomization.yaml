@@ -2,7 +2,7 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/projectset.migrx.io_projectsets.yaml
+- bases/project.migrx.io_projectsets.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patches:

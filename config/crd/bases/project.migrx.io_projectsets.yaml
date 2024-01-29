@@ -4,9 +4,9 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.12.0
-  name: projectsets.projectset.migrx.io
+  name: projectsets.project.migrx.io
 spec:
-  group: projectset.migrx.io
+  group: project.migrx.io
   names:
     kind: ProjectSet
     listKind: ProjectSetList
@@ -14,12 +14,7 @@ spec:
     singular: projectset
   scope: Cluster
   versions:
-  - additionalPrinterColumns:
-    - description: Status
-      jsonPath: .status.status
-      name: Status
-      type: string
-    name: v1alpha1
+  - name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ProjectSet is the Schema for the projectsets API
