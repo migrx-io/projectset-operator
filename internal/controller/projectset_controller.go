@@ -20,12 +20,14 @@ import (
 	"context"
 	"fmt"
 	"github.com/go-logr/logr"
+	"github.com/migrx-io/projectset-operator/pkg/utils"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -104,6 +106,7 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, err
 
 		}
+
 	}
 
 	//
@@ -171,6 +174,15 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
+	// Do all work here
+	log.Info(fmt.Sprintf("Start creating namespace: %s", instance.Spec.Namespace))
+
+	// save event
+	r.Recorder.Event(instance,
+		"Normal",
+		"Added namespace",
+		fmt.Sprintf("Namespace %s created", instance.Spec.Namespace))
+
 	// Update status if all complete
 	if err := r.setStatus(ctx, req, instance,
 		typeAvailableStatus,
@@ -216,6 +228,10 @@ func (r *ProjectSetReconciler) setStatus(ctx context.Context,
 		log.Error(err, "Failed to update instance status")
 		return err
 	}
+	if err := r.Update(ctx, instance); err != nil {
+		log.Error(err, "Failed to update instance")
+		return err
+	}
 
 	// Refetch last state
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
@@ -252,7 +268,7 @@ func (r *ProjectSetReconciler) doFinalizerOperations(cr *projectv1alpha1.Project
 // SetupWithManager sets up the controller with the Manager.
 func (r *ProjectSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&projectv1alpha1.ProjectSet{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
+		For(&projectv1alpha1.ProjectSet{}, builder.WithPredicates(utils.ResourceGenerationOrFinalizerChangedPredicate{})).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }
