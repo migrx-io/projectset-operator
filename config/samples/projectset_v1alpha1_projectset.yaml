@@ -1,0 +1,12 @@
+apiVersion: projectset.migrx.io/v1alpha1
+kind: ProjectSet
+metadata:
+  labels:
+    app.kubernetes.io/name: projectset
+    app.kubernetes.io/instance: projectset-sample
+    app.kubernetes.io/part-of: projectset-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: projectset-operator
+  name: projectset-sample
+spec:
+  name: test
