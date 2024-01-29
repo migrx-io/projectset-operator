@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-
 	"fmt"
 	"github.com/go-logr/logr"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -119,11 +118,6 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{Requeue: true}, nil
 		}
 
-		if err = r.Update(ctx, instance); err != nil {
-			log.Error(err, "Failed to update custom resource to add finalizer")
-			return ctrl.Result{}, err
-		}
-
 	}
 
 	//
@@ -152,12 +146,6 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// the Kubernetes API to remove the custom resource.
 			r.doFinalizerOperations(instance)
 
-			// refetch instance
-			if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-				log.Error(err, "Failed to re-fetch instance")
-				return ctrl.Result{}, err
-			}
-
 			// Update status
 			if err := r.setStatus(ctx, req, instance,
 				typeDegradedStatus,
@@ -181,6 +169,18 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 				return ctrl.Result{}, err
 			}
 		}
+	}
+
+
+    // Update status if all complete
+	if err := r.setStatus(ctx, req, instance,
+		typeAvailableStatus,
+		metav1.ConditionTrue,
+		"Reconciling",
+		"Reconciling is done"); err != nil {
+
+		return ctrl.Result{}, err
+
 	}
 
 	return ctrl.Result{}, nil
@@ -236,6 +236,7 @@ func (r *ProjectSetReconciler) doFinalizerOperations(cr *projectv1alpha1.Project
 
 	//eventtype is the type of this event, and is either Normal or Warning.
 	// The following implementation will raise an event
+
 	r.Recorder.Event(cr,
 		"Warning",
 		"Deleting",
@@ -247,6 +248,6 @@ func (r *ProjectSetReconciler) doFinalizerOperations(cr *projectv1alpha1.Project
 func (r *ProjectSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&projectv1alpha1.ProjectSet{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
 		Complete(r)
 }
