@@ -34,6 +34,8 @@ import (
 	logger "sigs.k8s.io/controller-runtime/pkg/log"
 
 	projectv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // Finilizer name
@@ -174,14 +176,38 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-	// Do all work here
-	log.Info(fmt.Sprintf("Start creating namespace: %s", instance.Spec.Namespace))
+	//
+	// Namespace Logic
+	//
 
-	// save event
-	r.Recorder.Event(instance,
-		"Normal",
-		"Added namespace",
-		fmt.Sprintf("Namespace %s created", instance.Spec.Namespace))
+	namespaceFound := &corev1.Namespace{}
+
+	err = r.Get(ctx, types.NamespacedName{Name: instance.Spec.Namespace}, namespaceFound)
+
+	if err != nil && apierrors.IsNotFound(err) {
+
+		namespace, err := r.defineNamespace(ctx, req, instance)
+
+		if err != nil {
+			log.Error(err, "Failed to define namespace")
+			return ctrl.Result{}, err
+		}
+
+		log.Info("Namespace created", "namespace", namespace)
+
+	} else if err != nil {
+
+		log.Error(err, "Failed to get Namespace")
+
+		// Reconcile failed due to error - requeue
+		return ctrl.Result{}, err
+	}
+
+	// Save event
+	// r.Recorder.Event(instance,
+	// 	"Normal",
+	// 	"Added namespace",
+	// 	fmt.Sprintf("Namespace %s created", instance.Spec.Namespace))
 
 	// Update status if all complete
 	if err := r.setStatus(ctx, req, instance,
@@ -202,6 +228,64 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 // Reconcile helper functions
 //
 //
+
+// Namespace build logic
+func (r *ProjectSetReconciler) namespaceForProjectSet(projSet *projectv1alpha1.ProjectSet) (*corev1.Namespace, error) {
+
+	labels := projSet.Spec.Labels
+	annotations := projSet.Spec.Annotations
+
+	log.Info("namespaceForProject", "labels", labels, "annotations", annotations)
+
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   projSet.Spec.Namespace,
+			Name:        projSet.Spec.Namespace,
+			Labels:      labels,
+			Annotations: annotations,
+		},
+	}
+
+	// Set the ownerRef for the Namespace
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	if err := ctrl.SetControllerReference(projSet, namespace, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return namespace, nil
+}
+
+// Define new namespace based on ProjectSet
+func (r *ProjectSetReconciler) defineNamespace(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet) (*corev1.Namespace, error) {
+
+	// Define a new namespace
+	namespace, err := r.namespaceForProjectSet(instance)
+
+	log.Info(fmt.Sprintf("Define new namespace: %s", namespace))
+
+	if err != nil {
+		log.Error(err, fmt.Sprintf("Failed to create namespace %s", instance.Spec.Namespace))
+
+		// Update status
+		if err := r.setStatus(ctx, req, instance,
+			typeAvailableStatus,
+			metav1.ConditionFalse,
+			"Reconciling",
+			fmt.Sprintf("Failed to define namespace %s", instance.Spec.Namespace)); err != nil {
+
+			return nil, err
+
+		}
+
+		return nil, err
+
+	}
+
+	return namespace, nil
+
+}
 
 func (r *ProjectSetReconciler) setStatus(ctx context.Context,
 	req ctrl.Request,
