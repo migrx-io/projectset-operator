@@ -14,7 +14,12 @@ spec:
     singular: projectset
   scope: Cluster
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: Status
+      jsonPath: .status.status
+      name: Status
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ProjectSet is the Schema for the projectsets API
