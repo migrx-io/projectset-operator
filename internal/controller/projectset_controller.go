@@ -19,13 +19,18 @@ package controller
 import (
 	"context"
 
+	"fmt"
+	"github.com/go-logr/logr"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	logger "sigs.k8s.io/controller-runtime/pkg/log"
 
 	projectv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
 )
@@ -62,9 +67,12 @@ type ProjectSetReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.15.0/pkg/reconcile
+
+var log logr.Logger
+
 func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 
-	log := r.Log.WithValues("projectset", req.NamespacedName)
+	log = logger.FromContext(ctx).WithValues("projectset", req.NamespacedName)
 
 	//
 	// Fetch the instance
@@ -107,12 +115,15 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		log.Info("Adding Finalizer")
 		if ok := controllerutil.AddFinalizer(instance, projectSetFinalizer); !ok {
+			log.Error(err, "Failed to add finalizer into the custom resource")
+			return ctrl.Result{Requeue: true}, nil
 		}
 
 		if err = r.Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update custom resource to add finalizer")
 			return ctrl.Result{}, err
 		}
+
 	}
 
 	//
@@ -140,6 +151,12 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			// Perform all operations required before remove the finalizer and allow
 			// the Kubernetes API to remove the custom resource.
 			r.doFinalizerOperations(instance)
+
+			// refetch instance
+			if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+				log.Error(err, "Failed to re-fetch instance")
+				return ctrl.Result{}, err
+			}
 
 			// Update status
 			if err := r.setStatus(ctx, req, instance,
@@ -178,7 +195,9 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 func (r *ProjectSetReconciler) setStatus(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
-	statusType, status, reason, message string) error {
+	statusType string,
+	status metav1.ConditionStatus,
+	reason, message string) error {
 
 	// Set condition
 	meta.SetStatusCondition(&instance.Status.Conditions,
@@ -188,7 +207,7 @@ func (r *ProjectSetReconciler) setStatus(ctx context.Context,
 			Message: message})
 
 	// Update state
-	if err = r.Status().Update(ctx, instance); err != nil {
+	if err := r.Status().Update(ctx, instance); err != nil {
 		log.Error(err, "Failed to update instance status")
 		return err
 	}
@@ -228,6 +247,6 @@ func (r *ProjectSetReconciler) doFinalizerOperations(cr *projectv1alpha1.Project
 func (r *ProjectSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&projectv1alpha1.ProjectSet{}).
-		WithOptions(controller.Options{MaxConcurrentReconciles: 2}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }
