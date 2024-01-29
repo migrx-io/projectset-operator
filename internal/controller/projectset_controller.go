@@ -198,6 +198,12 @@ func (r *ProjectSetReconciler) setStatus(ctx context.Context,
 	status metav1.ConditionStatus,
 	reason, message string) error {
 
+	// Refetch last state
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+		log.Error(err, "Failed to re-fetch instance")
+		return err
+	}
+
 	// Set condition
 	meta.SetStatusCondition(&instance.Status.Conditions,
 		metav1.Condition{Type: statusType,
