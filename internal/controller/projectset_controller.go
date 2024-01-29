@@ -171,8 +171,7 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-
-    // Update status if all complete
+	// Update status if all complete
 	if err := r.setStatus(ctx, req, instance,
 		typeAvailableStatus,
 		metav1.ConditionTrue,

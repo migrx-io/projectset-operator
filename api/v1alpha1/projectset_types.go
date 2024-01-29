@@ -28,13 +28,13 @@ type ProjectSetSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// ProjectSet name
-	Name string `json:"name"`
+	// Namespace name
+	Namespace string `json:"namespace"`
 
-	// ProjectSet labels
+	// Custom namespace labels
 	Labels map[string]string `json:"labels,omitempty"`
 
-	// ProjectSet annotations
+	// Custom namespace annotations
 	Annotations map[string]string `json:"annotations,omitempty"`
 }
 

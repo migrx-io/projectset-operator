@@ -7,6 +7,6 @@ metadata:
     app.kubernetes.io/part-of: projectset-operator
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: projectset-operator
-  name: projectset-sample
+  name: test-projectset
 spec:
-  name: test
+  namespace: test

@@ -37,18 +37,18 @@ spec:
               annotations:
                 additionalProperties:
                   type: string
-                description: ProjectSet annotations
+                description: Custom namespace annotations
                 type: object
               labels:
                 additionalProperties:
                   type: string
-                description: ProjectSet labels
+                description: Custom namespace labels
                 type: object
-              name:
-                description: ProjectSet name
+              namespace:
+                description: Namespace name
                 type: string
             required:
-            - name
+            - namespace
             type: object
           status:
             description: ProjectSetStatus defines the observed state of ProjectSet
