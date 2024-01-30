@@ -198,6 +198,12 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, err
 		}
 
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Create namespace",
+			fmt.Sprintf("Namespace %s created", instance.Spec.Namespace))
+
 		return ctrl.Result{Requeue: true}, nil
 
 	} else if err != nil {
@@ -206,13 +212,28 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		// Reconcile failed due to error - requeue
 		return ctrl.Result{}, err
-	}
 
-	// Save event
-	// r.Recorder.Event(instance,
-	// 	"Normal",
-	// 	"Added namespace",
-	// 	fmt.Sprintf("Namespace %s created", instance.Spec.Namespace))
+	} else {
+
+		//
+		// Object exists - compare states
+		//
+
+		//re-fetch again before compare
+		namespaceFound := &corev1.Namespace{}
+
+		if err := r.Get(ctx, types.NamespacedName{Name: instance.Spec.Namespace}, namespaceFound); err != nil {
+			log.Error(err, "Failed to re-fetch namespace")
+			return ctrl.Result{}, err
+
+		}
+
+		// check is object is chnaged
+		if err := r.checkAndUpdateNamespace(ctx, req, instance, namespaceFound); err != nil {
+			return ctrl.Result{}, err
+		}
+
+	}
 
 	// Update status if all complete
 	if err := r.setStatus(ctx, req, instance,
@@ -258,6 +279,53 @@ func (r *ProjectSetReconciler) namespaceForProjectSet(projSet *projectv1alpha1.P
 	}
 
 	return namespace, nil
+}
+
+// Check namespace changes with ProjectSet
+func (r *ProjectSetReconciler) checkAndUpdateNamespace(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace) error {
+
+	log.Info("labels", "namespace", namespace.ObjectMeta.Labels, "instance", instance.Spec.Labels)
+	log.Info("annotations", "namespace", namespace.ObjectMeta.Annotations, "instance", instance.Spec.Annotations)
+
+	// if label or annotations changed - update namespace
+	// apiequality.Semantic.DeepDerivative(desiredObj.Spec, runtimeObj.Spec)
+	if !utils.IsMapSubset(namespace.ObjectMeta.Labels, instance.Spec.Labels) ||
+		!utils.IsMapSubset(namespace.ObjectMeta.Annotations, instance.Spec.Annotations) {
+
+		log.Info("Namespace labels or annotations are dirreferent - update from instance")
+
+		namespace.ObjectMeta.Labels = instance.Spec.Labels
+		namespace.ObjectMeta.Annotations = instance.Spec.Annotations
+
+		if err := r.Update(ctx, namespace); err != nil {
+
+			// Update status
+			if err := r.setStatus(ctx, req, instance,
+				typeAvailableStatus,
+				metav1.ConditionFalse,
+				"Reconciling",
+				fmt.Sprintf("Failed to create namespace %s", namespace.Name)); err != nil {
+
+				return err
+
+			}
+
+			return err
+		}
+
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Update namespace",
+			fmt.Sprintf("Namespace %s updated", instance.Spec.Namespace))
+
+	}
+
+	return nil
+
 }
 
 // Define new namespace based on ProjectSet
