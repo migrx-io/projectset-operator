@@ -224,18 +224,35 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// Object exists - compare states
 	//
 
+	//
 	// Check namaspace is chnaged
+	//
 	if err := r.checkAndUpdateNamespace(ctx, req, instance, namespaceFound); err != nil {
 		return ctrl.Result{}, err
 	}
 
+	//
 	// Check reqource quota
+	//
 	rq, err := r.createAndUpdateResourceQuota(ctx, req, instance, namespaceFound)
 
 	if err != nil {
 		return ctrl.Result{}, err
 
 	} else if rq != nil && err == nil {
+		// if rq was created or changed
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	//
+	// Check limit range
+	//
+	lr, err := r.createAndUpdateLimitRange(ctx, req, instance, namespaceFound)
+
+	if err != nil {
+		return ctrl.Result{}, err
+
+	} else if lr != nil && err == nil {
 		// if rq was created or changed
 		return ctrl.Result{Requeue: true}, nil
 	}
@@ -316,8 +333,78 @@ func (r *ProjectSetReconciler) resourceQuotaForNamespace(namespace *corev1.Names
 	return resourceQuota, nil
 }
 
+// Limit Range logic create/update
+// Return
+//   - nil, nil  nothing's changed
+//   - nil, err  error occured
+//   - obj, nil  created/updated object
+func (r *ProjectSetReconciler) createAndUpdateLimitRange(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace) (*corev1.LimitRange, error) {
+
+	//check if defined in instance
+	if instance.Spec.LimitRange.Limits == nil {
+		log.Info("LimitRange is not defined")
+		return nil, nil
+	}
+
+	// Find if limitrange exists
+	limitRangeFound := &corev1.LimitRange{}
+	err := r.Get(ctx, types.NamespacedName{Name: namespace.Name, Namespace: namespace.Name}, limitRangeFound)
+
+	if err != nil && apierrors.IsNotFound(err) {
+
+		// define a new limit range
+		lr, err := r.limitRangeForNamespace(instance, namespace, instance)
+
+		if err != nil {
+			log.Error(err, "Failed to define new ResourceQuota")
+			return nil, err
+		}
+
+		log.Info("Creating a new LimitRange", "Name", lr.Name)
+
+		err = r.Create(ctx, lr)
+
+		if err != nil {
+			log.Error(err, "Failed to create new LimitRange", "Namespace", lr.Namespace, "Name", lr.Name)
+			return nil, err
+		}
+
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Create LimitRange",
+			fmt.Sprintf("LimitRange %s created", lr.Name))
+
+		// limitrange created, return and requeue
+		return lr, nil
+
+	} else if err != nil {
+
+		log.Error(err, "Failed to get LimitRange")
+		// Reconcile failed due to error - requeue
+		return nil, err
+	}
+
+	log.Info("LimitRange exists")
+
+	// Check if it changed
+	// Check resource quota is chnaged
+	if err := r.checkAndUpdateLimitRange(ctx, req, instance, namespace, limitRangeFound); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+
+}
+
 // Resource Quota logic create/update
-// Return only requeue and errors
+// Return
+//   - nil, nil  nothing's changed
+//   - nil, err  error occured
+//   - obj, nil  created/updated object
 func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
@@ -400,8 +487,8 @@ func (r *ProjectSetReconciler) getOrDefaultLimitRange(instance *projectv1alpha1.
 
 }
 
-// Define new LimitRange
-func (r *ProjectSetReconciler) limitRangeForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace) *corev1.LimitRange {
+// Limit Range build logic
+func (r *ProjectSetReconciler) limitRangeForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace, projSet *projectv1alpha1.ProjectSet) (*corev1.LimitRange, error) {
 
 	labels := namespace.GetLabels()
 	annotations := namespace.GetAnnotations()
@@ -417,10 +504,49 @@ func (r *ProjectSetReconciler) limitRangeForNamespace(instance *projectv1alpha1.
 		},
 	}
 
-	return limitRange
+	// Set the ownerRef for the Namespace
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	if err := ctrl.SetControllerReference(namespace, limitRange, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return limitRange, nil
 }
 
-// Check namespace changes with ProjectSet
+// Check LimitRange changes with ProjectSet
+func (r *ProjectSetReconciler) checkAndUpdateLimitRange(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace,
+	lr *corev1.LimitRange,
+) error {
+
+	// equality.Semantic.DeepDerivative(desiredObj.Spec, runtimeObj.Spec)
+	log.Info("checkAndUpdateLimitRange", "spec", instance.Spec.ResourceQuota, "lr", lr.Spec)
+
+	if !equality.Semantic.DeepDerivative(instance.Spec.LimitRange, lr.Spec) {
+
+		log.Info("LimitRange is dirreferent - update from instance")
+
+		lr.Spec = instance.Spec.LimitRange
+
+		if err := r.Update(ctx, lr); err != nil {
+			return err
+		}
+
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Update LimitRange",
+			fmt.Sprintf("LimitRange %s updated", lr.GetName()))
+
+	}
+
+	return nil
+
+}
+
+// Check ResourceQuota changes with ProjectSet
 func (r *ProjectSetReconciler) checkAndUpdateResourceQuota(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
