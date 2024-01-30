@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/migrx-io/projectset-operator/pkg/utils"
+	"k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -369,6 +370,12 @@ func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
 
 	log.Info("ResourceQuota exists")
 
+	// Check if it changed
+	// Check resource quota is chnaged
+	if err := r.checkAndUpdateResourceQuota(ctx, req, instance, namespace, resourceQuotaFound); err != nil {
+		return nil, err
+	}
+
 	return nil, nil
 
 }
@@ -414,6 +421,41 @@ func (r *ProjectSetReconciler) limitRangeForNamespace(instance *projectv1alpha1.
 }
 
 // Check namespace changes with ProjectSet
+func (r *ProjectSetReconciler) checkAndUpdateResourceQuota(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace,
+	rq *corev1.ResourceQuota,
+) error {
+
+	// if label or annotations changed - update namespace
+	// equality.Semantic.DeepDerivative(desiredObj.Spec, runtimeObj.Spec)
+
+	log.Info("checkAndUpdateResourceQuota", "spec", instance.Spec.ResourceQuota, "rq", rq.Spec)
+
+	if !equality.Semantic.DeepDerivative(instance.Spec.ResourceQuota, rq.Spec) {
+
+		log.Info("ResourceQuota is dirreferent - update from instance")
+
+		rq.Spec = instance.Spec.ResourceQuota
+
+		if err := r.Update(ctx, rq); err != nil {
+			return err
+		}
+
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Update ResourceQuota",
+			fmt.Sprintf("ResourceQuota %s updated", rq.GetName()))
+
+	}
+
+	return nil
+
+}
+
+// Check namespace changes with ProjectSet
 func (r *ProjectSetReconciler) checkAndUpdateNamespace(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
@@ -439,7 +481,7 @@ func (r *ProjectSetReconciler) checkAndUpdateNamespace(ctx context.Context,
 				typeAvailableStatus,
 				metav1.ConditionFalse,
 				"Reconciling",
-				fmt.Sprintf("Failed to create namespace %s", namespace.Name)); err != nil {
+				fmt.Sprintf("Failed to update namespace %s", namespace.Name)); err != nil {
 
 				return err
 
