@@ -31,7 +31,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logger "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	projectv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
@@ -262,6 +264,9 @@ func (r *ProjectSetReconciler) namespaceForProjectSet(projSet *projectv1alpha1.P
 
 	labels := projSet.Spec.Labels
 	annotations := projSet.Spec.Annotations
+
+	// add projectset-name as annotation for all child resources for correct watching
+	annotations["projectset-name"] = projSet.GetName()
 
 	log.Info("namespaceForProject", "labels", labels, "annotations", annotations)
 
@@ -586,11 +591,63 @@ func (r *ProjectSetReconciler) doFinalizerOperations(cr *projectv1alpha1.Project
 
 }
 
+// Finalizers will perform the required operations before delete the CR.
+func (r *ProjectSetReconciler) findProjectSetByResourceQuotaName(ctx context.Context, rq *corev1.ResourceQuota) ([]projectv1alpha1.ProjectSet, error) {
+
+	psFound := &projectv1alpha1.ProjectSet{}
+
+	err := r.Get(ctx, types.NamespacedName{Name: rq.GetAnnotations()["projectset-name"]}, psFound)
+
+	// if returned empty struct
+	if name := psFound.GetName(); name == "" {
+		return nil, fmt.Errorf("ProjectSet already deleted")
+	}
+
+	log.Info("findProjectSetByResourceQuotaName", "err", err, "rq", rq, "psFound", psFound)
+
+	if err != nil {
+		// Error reading the object - requeue the request.
+		log.Error(err, "Failed to get ProjectSet")
+		return nil, err
+	}
+
+	return []projectv1alpha1.ProjectSet{*psFound}, nil
+
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ProjectSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&projectv1alpha1.ProjectSet{}, builder.WithPredicates(utils.ResourceGenerationOrFinalizerChangedPredicate{})).
 		Owns(&corev1.Namespace{}).
+		Watches(&corev1.ResourceQuota{
+			TypeMeta: metav1.TypeMeta{
+				Kind: "ResourceQuota",
+			},
+		}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+			reconcileRequests := []reconcile.Request{}
+
+			rq := a.(*corev1.ResourceQuota)
+
+			projSet, err := r.findProjectSetByResourceQuotaName(ctx, rq)
+
+			if err != nil {
+				return []reconcile.Request{}
+			}
+
+			for _, config := range projSet {
+				reconcileRequests = append(reconcileRequests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      config.GetName(),
+						Namespace: config.GetNamespace(),
+					},
+				})
+			}
+
+			log.Info("reconcileRequests", "request", reconcileRequests)
+
+			return reconcileRequests
+		})).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }

@@ -21,7 +21,7 @@ spec:
       requests.cpu: "2"
       requests.memory: 3Gi
       limits.cpu: "4"
-      limits.memory: 5Gi
+      limits.memory: 6Gi
   limitRange:
     limits:
       - default:
