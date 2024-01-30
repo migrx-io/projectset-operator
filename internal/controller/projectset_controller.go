@@ -370,6 +370,46 @@ func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
 
 }
 
+// Get default limits limitRange
+// hack to avoid validation issue
+func (r *ProjectSetReconciler) getOrDefaultLimitRange(instance *projectv1alpha1.ProjectSet) []corev1.LimitRangeItem {
+
+	log.Info("Ckeck limits in LimitRange and set")
+
+	if instance.Spec.LimitRange.Limits == nil {
+
+		limits := []corev1.LimitRangeItem{}
+
+		log.Info("LimitRange is not defined. Create stub")
+
+		return limits
+
+	}
+
+	return instance.Spec.LimitRange.Limits
+
+}
+
+// Define new LimitRange
+func (r *ProjectSetReconciler) limitRangeForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace) *corev1.LimitRange {
+
+	labels := namespace.GetLabels()
+	annotations := namespace.GetAnnotations()
+	limitRange := &corev1.LimitRange{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   namespace.Name,
+			Name:        namespace.Name,
+			Labels:      labels,
+			Annotations: annotations,
+		},
+		Spec: corev1.LimitRangeSpec{
+			Limits: r.getOrDefaultLimitRange(instance),
+		},
+	}
+
+	return limitRange
+}
+
 // Check namespace changes with ProjectSet
 func (r *ProjectSetReconciler) checkAndUpdateNamespace(ctx context.Context,
 	req ctrl.Request,
@@ -506,6 +546,11 @@ func (r *ProjectSetReconciler) setStatus(ctx context.Context,
 		log.Error(err, "Failed to update instance status")
 		return err
 	}
+
+	// FIXME, hack to resolve validation issue, implement default vaules in webhook
+	// Patch default LimitRange to fix issue with required fields
+	instance.Spec.LimitRange.Limits = r.getOrDefaultLimitRange(instance)
+
 	if err := r.Update(ctx, instance); err != nil {
 		log.Error(err, "Failed to update instance")
 		return err

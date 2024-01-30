@@ -31,8 +31,6 @@ type ProjectSetSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Namespace name
-	// +required
-	// +kubebuilder:validation:Required
 	Namespace string `json:"namespace"`
 
 	// ProjectSet templates
