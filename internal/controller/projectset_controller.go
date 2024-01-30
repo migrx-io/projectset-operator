@@ -390,6 +390,7 @@ func (r *ProjectSetReconciler) doFinalizerOperations(cr *projectv1alpha1.Project
 func (r *ProjectSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&projectv1alpha1.ProjectSet{}, builder.WithPredicates(utils.ResourceGenerationOrFinalizerChangedPredicate{})).
+		Owns(&corev1.Namespace{}).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }
