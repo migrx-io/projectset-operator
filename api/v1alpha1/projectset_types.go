@@ -45,10 +45,10 @@ type ProjectSetSpec struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 
 	// ResourceQuota specification
-	ResourceQuota corev1.ResourceQuotaSpec `json:"resourceQuota"`
+	ResourceQuota corev1.ResourceQuotaSpec `json:"resourceQuota,omitempty"`
 
 	// LimitRange specification
-	LimitRange v1.LimitRangeSpec `json:"limitRange"`
+	LimitRange v1.LimitRangeSpec `json:"limitRange,omitempty"`
 }
 
 // ProjectSetStatus defines the observed state of ProjectSet

@@ -201,9 +201,7 @@ spec:
                   type: string
                 type: array
             required:
-            - limitRange
             - namespace
-            - resourceQuota
             type: object
           status:
             description: ProjectSetStatus defines the observed state of ProjectSet
