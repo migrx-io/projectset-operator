@@ -215,28 +215,26 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// Reconcile failed due to error - requeue
 		return ctrl.Result{}, err
 
-	} else {
+	}
 
-		//
-		// Object exists - compare states
-		//
+	//
+	// Object exists - compare states
+	//
 
-		//re-fetch again before compare
-		namespaceFound := &corev1.Namespace{}
+	// Check namaspace is chnaged
+	if err := r.checkAndUpdateNamespace(ctx, req, instance, namespaceFound); err != nil {
+		return ctrl.Result{}, err
+	}
 
-		if err := r.Get(ctx, types.NamespacedName{Name: instance.Spec.Namespace}, namespaceFound); err != nil {
-			log.Error(err, "Failed to re-fetch namespace")
-			return ctrl.Result{}, err
+	// Check reqource quota
+	rq, err := r.createAndUpdateResourceQuota(ctx, req, instance, namespaceFound)
 
-		}
+	if err != nil {
+		return ctrl.Result{}, err
 
-		// Check namaspace is chnaged
-		if err := r.checkAndUpdateNamespace(ctx, req, instance, namespaceFound); err != nil {
-			return ctrl.Result{}, err
-		}
-
-		// Check reqource quota
-
+	} else if rq != nil && err == nil {
+		// if rq was created or changed
+		return ctrl.Result{Requeue: true}, nil
 	}
 
 	// Update status if all complete
@@ -313,16 +311,16 @@ func (r *ProjectSetReconciler) resourceQuotaForNamespace(namespace *corev1.Names
 }
 
 // Resource Quota logic create/update
+// Return only requeue and errors
 func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
-	namespace *corev1.Namespace) (ctrl.Result, error) {
+	namespace *corev1.Namespace) (*corev1.ResourceQuota, error) {
 
 	//check if defined in instance
 	if instance.Spec.ResourceQuota.Hard == nil {
 		log.Info("Resource quota is not defined")
-		return ctrl.Result{}, nil
-
+		return nil, nil
 	}
 
 	// Find if resourcequota exists
@@ -336,7 +334,7 @@ func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
 
 		if err != nil {
 			log.Error(err, "Failed to define new ResourceQuota")
-			return ctrl.Result{}, err
+			return nil, err
 		}
 
 		log.Info("Creating a new ResourceQuota", "ResourceQuota.Namespace", rq.Namespace, "ResourceQuota.Name", rq.Name)
@@ -345,7 +343,7 @@ func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
 
 		if err != nil {
 			log.Error(err, "Failed to create new ResourceQuota", "ResourceQuota.Namespace", rq.Namespace, "ResourceQuota.Name", rq.Name)
-			return ctrl.Result{}, err
+			return nil, err
 		}
 
 		// Save event
@@ -355,18 +353,18 @@ func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
 			fmt.Sprintf("ResourceQuota %s created", rq.Name))
 
 		// resourcequota created, return and requeue
-		return ctrl.Result{Requeue: true}, nil
+		return rq, nil
 
 	} else if err != nil {
 
 		log.Error(err, "Failed to get ResourceQuota")
 		// Reconcile failed due to error - requeue
-		return ctrl.Result{}, err
+		return nil, err
 	}
 
 	log.Info("ResourceQuota exists")
 
-	return ctrl.Result{}, nil
+	return nil, nil
 
 }
 

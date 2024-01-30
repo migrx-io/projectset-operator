@@ -7,9 +7,9 @@ metadata:
     app.kubernetes.io/part-of: projectset-operator
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: projectset-operator
-  name: devteam-projectset
+  name: devteam-projectset-with-quota-and-limit
 spec:
-  namespace: dev-app
+  namespace: dev-app-with-quota-and-limit
   labels:
     app: frontend
     stage: dev
