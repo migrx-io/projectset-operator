@@ -193,7 +193,12 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 			return ctrl.Result{}, err
 		}
 
-		log.Info("Namespace created", "namespace", namespace)
+		// Create namespace
+		if err := r.createNamespace(ctx, req, instance, namespace); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		return ctrl.Result{Requeue: true}, nil
 
 	} else if err != nil {
 
@@ -253,6 +258,38 @@ func (r *ProjectSetReconciler) namespaceForProjectSet(projSet *projectv1alpha1.P
 	}
 
 	return namespace, nil
+}
+
+// Define new namespace based on ProjectSet
+func (r *ProjectSetReconciler) createNamespace(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace) error {
+
+	log.Info("Creating a new Namespace", "Namespace.Name", namespace.Name)
+
+	if err := r.Create(ctx, namespace); err != nil {
+		log.Error(err, "Failed to create new Namespace", "Namespace.Name", namespace.Name)
+
+		// Update status
+		if err := r.setStatus(ctx, req, instance,
+			typeAvailableStatus,
+			metav1.ConditionFalse,
+			"Reconciling",
+			fmt.Sprintf("Failed to create namespace %s", namespace.Name)); err != nil {
+
+			return err
+
+		}
+
+		return err
+	}
+
+	// namespace created, return and requeue
+	log.Info("Namespace created", "Namespace.Name", namespace.Name)
+
+	return nil
+
 }
 
 // Define new namespace based on ProjectSet
