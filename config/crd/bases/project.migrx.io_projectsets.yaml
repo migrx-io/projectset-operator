@@ -11,10 +11,21 @@ spec:
     kind: ProjectSet
     listKind: ProjectSetList
     plural: projectsets
+    shortNames:
+    - ps
+    - prjs
     singular: projectset
   scope: Cluster
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - description: The status
+      jsonPath: .status.conditions[-1:].type
+      name: Status
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ProjectSet is the Schema for the projectsets API

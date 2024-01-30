@@ -29,6 +29,8 @@ type ProjectSetSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Namespace name
+	// +required
+	// +kubebuilder:validation:Required
 	Namespace string `json:"namespace"`
 
 	// Custom namespace labels
@@ -50,9 +52,10 @@ type ProjectSetStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
-//+kubebuilder:resource:shortName=prjs;projs
 //+kubebuilder:singular=projectset
-//+kubebuilder:resource:scope=Cluster
+//+kubebuilder:resource:scope=Cluster,shortName=ps;prjs
+//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.conditions[-1:].type",description="The status"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ProjectSet is the Schema for the projectsets API
 type ProjectSet struct {
