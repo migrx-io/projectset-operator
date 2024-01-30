@@ -17,9 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    v1 "k8s.io/api/core/v1"
-    corev1 "k8s.io/api/core/v1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -35,8 +35,8 @@ type ProjectSetSpec struct {
 	// +kubebuilder:validation:Required
 	Namespace string `json:"namespace"`
 
-    // ProjectSet templates
-    Templates []string `json:"templates,omitempty"`
+	// ProjectSet templates
+	Templates []string `json:"templates,omitempty"`
 
 	// Custom namespace labels
 	Labels map[string]string `json:"labels,omitempty"`
@@ -44,12 +44,11 @@ type ProjectSetSpec struct {
 	// Custom namespace annotations
 	Annotations map[string]string `json:"annotations,omitempty"`
 
-    // ResourceQuota specification
-    ResourceQuota corev1.ResourceQuotaSpec `json:"resourceQuota"`
+	// ResourceQuota specification
+	ResourceQuota corev1.ResourceQuotaSpec `json:"resourceQuota"`
 
-    // LimitRange specification
-    LimitRange v1.LimitRangeSpec `json:"limitRange"`
-
+	// LimitRange specification
+	LimitRange v1.LimitRangeSpec `json:"limitRange"`
 }
 
 // ProjectSetStatus defines the observed state of ProjectSet

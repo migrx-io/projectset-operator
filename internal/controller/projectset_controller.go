@@ -230,10 +230,12 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 		}
 
-		// check is object is chnaged
+		// Check namaspace is chnaged
 		if err := r.checkAndUpdateNamespace(ctx, req, instance, namespaceFound); err != nil {
 			return ctrl.Result{}, err
 		}
+
+		// Check reqource quota
 
 	}
 
@@ -281,6 +283,91 @@ func (r *ProjectSetReconciler) namespaceForProjectSet(projSet *projectv1alpha1.P
 	}
 
 	return namespace, nil
+}
+
+// Resource Quota build logic
+func (r *ProjectSetReconciler) resourceQuotaForNamespace(namespace *corev1.Namespace, projSet *projectv1alpha1.ProjectSet) (*corev1.ResourceQuota, error) {
+
+	labels := namespace.GetLabels()
+	annotations := namespace.GetAnnotations()
+
+	resourceQuota := &corev1.ResourceQuota{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   namespace.Name,
+			Name:        namespace.Name,
+			Labels:      labels,
+			Annotations: annotations,
+		},
+		Spec: corev1.ResourceQuotaSpec{
+			Hard: projSet.Spec.ResourceQuota.Hard,
+		},
+	}
+
+	// Set the ownerRef for the Namespace
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	if err := ctrl.SetControllerReference(namespace, resourceQuota, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return resourceQuota, nil
+}
+
+// Resource Quota logic create/update
+func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace) (ctrl.Result, error) {
+
+	//check if defined in instance
+	if instance.Spec.ResourceQuota.Hard == nil {
+		log.Info("Resource quota is not defined")
+		return ctrl.Result{}, nil
+
+	}
+
+	// Find if resourcequota exists
+	resourceQuotaFound := &corev1.ResourceQuota{}
+	err := r.Get(ctx, types.NamespacedName{Name: namespace.Name, Namespace: namespace.Name}, resourceQuotaFound)
+
+	if err != nil && apierrors.IsNotFound(err) {
+
+		// define a new resourcequota
+		rq, err := r.resourceQuotaForNamespace(namespace, instance)
+
+		if err != nil {
+			log.Error(err, "Failed to define new ResourceQuota")
+			return ctrl.Result{}, err
+		}
+
+		log.Info("Creating a new ResourceQuota", "ResourceQuota.Namespace", rq.Namespace, "ResourceQuota.Name", rq.Name)
+
+		err = r.Create(ctx, rq)
+
+		if err != nil {
+			log.Error(err, "Failed to create new ResourceQuota", "ResourceQuota.Namespace", rq.Namespace, "ResourceQuota.Name", rq.Name)
+			return ctrl.Result{}, err
+		}
+
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Create ResourceQuota",
+			fmt.Sprintf("ResourceQuota %s created", rq.Name))
+
+		// resourcequota created, return and requeue
+		return ctrl.Result{Requeue: true}, nil
+
+	} else if err != nil {
+
+		log.Error(err, "Failed to get ResourceQuota")
+		// Reconcile failed due to error - requeue
+		return ctrl.Result{}, err
+	}
+
+	log.Info("ResourceQuota exists")
+
+	return ctrl.Result{}, nil
+
 }
 
 // Check namespace changes with ProjectSet
