@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+    v1 "k8s.io/api/core/v1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -33,11 +34,21 @@ type ProjectSetSpec struct {
 	// +kubebuilder:validation:Required
 	Namespace string `json:"namespace"`
 
+    // ProjectSet templates
+    Templates []string `json:"templates,omitempty"`
+
 	// Custom namespace labels
 	Labels map[string]string `json:"labels,omitempty"`
 
 	// Custom namespace annotations
 	Annotations map[string]string `json:"annotations,omitempty"`
+
+    // ResourceQuota specification
+    ResourceQuota corev1.ResourceQuotaSpec `json:"resourceQuota"`
+
+    // LimitRange specification
+    LimitRange v1.LimitRangeSpec `json:"limitRange"`
+
 }
 
 // ProjectSetStatus defines the observed state of ProjectSet
