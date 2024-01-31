@@ -33,7 +33,7 @@ spec:
           memory: "50Mi"
         max:
           cpu: "1"
-          memory: "2Gi"
+          memory: "4Gi"
         min:
           cpu: 100m
           memory: "50Mi"

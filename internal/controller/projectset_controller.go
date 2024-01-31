@@ -759,19 +759,18 @@ func (r *ProjectSetReconciler) doFinalizerOperations(cr *projectv1alpha1.Project
 
 }
 
-// Finalizers will perform the required operations before delete the CR.
-func (r *ProjectSetReconciler) findProjectSetByResourceQuotaName(ctx context.Context, rq *corev1.ResourceQuota) ([]projectv1alpha1.ProjectSet, error) {
+func (r *ProjectSetReconciler) findProjectSetByName(ctx context.Context, name string) ([]projectv1alpha1.ProjectSet, error) {
 
 	psFound := &projectv1alpha1.ProjectSet{}
 
-	err := r.Get(ctx, types.NamespacedName{Name: rq.GetAnnotations()["projectset-name"]}, psFound)
+	err := r.Get(ctx, types.NamespacedName{Name: name}, psFound)
 
 	// if returned empty struct
 	if name := psFound.GetName(); name == "" {
 		return nil, fmt.Errorf("ProjectSet already deleted")
 	}
 
-	log.Info("findProjectSetByResourceQuotaName", "err", err, "rq", rq, "psFound", psFound)
+	log.Info("findProjectSetByResourceQuotaName", "err", err, "name", name, "psFound", psFound)
 
 	if err != nil {
 		// Error reading the object - requeue the request.
@@ -797,7 +796,35 @@ func (r *ProjectSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			rq := a.(*corev1.ResourceQuota)
 
-			projSet, err := r.findProjectSetByResourceQuotaName(ctx, rq)
+			projSet, err := r.findProjectSetByName(ctx, rq.GetAnnotations()["projectset-name"])
+
+			if err != nil {
+				return []reconcile.Request{}
+			}
+
+			for _, config := range projSet {
+				reconcileRequests = append(reconcileRequests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      config.GetName(),
+						Namespace: config.GetNamespace(),
+					},
+				})
+			}
+
+			log.Info("reconcileRequests", "request", reconcileRequests)
+
+			return reconcileRequests
+		})).
+		Watches(&corev1.LimitRange{
+			TypeMeta: metav1.TypeMeta{
+				Kind: "LimitRange",
+			},
+		}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+			reconcileRequests := []reconcile.Request{}
+
+			lr := a.(*corev1.LimitRange)
+
+			projSet, err := r.findProjectSetByName(ctx, lr.GetAnnotations()["projectset-name"])
 
 			if err != nil {
 				return []reconcile.Request{}
