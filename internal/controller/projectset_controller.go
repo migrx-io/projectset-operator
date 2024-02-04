@@ -257,6 +257,47 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{Requeue: true}, nil
 	}
 
+    //
+	// Check network policies
+	//
+	lr, err := r.createAndUpdateNetworkPolicies(ctx, req, instance, namespaceFound)
+
+	if err != nil {
+		return ctrl.Result{}, err
+
+	} else if lr != nil && err == nil {
+		// if rq was created or changed
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	//
+	// Check role rules
+	//
+	lr, err := r.createAndUpdateRoleRules(ctx, req, instance, namespaceFound)
+
+	if err != nil {
+		return ctrl.Result{}, err
+
+	} else if lr != nil && err == nil {
+		// if rq was created or changed
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+	//
+	// Check group permissions
+	//
+	lr, err := r.createAndUpdateGroupPermissions(ctx, req, instance, namespaceFound)
+
+	if err != nil {
+		return ctrl.Result{}, err
+
+	} else if lr != nil && err == nil {
+		// if rq was created or changed
+		return ctrl.Result{Requeue: true}, nil
+	}
+
+
+
 	// Update status if all complete
 	if err := r.setStatus(ctx, req, instance,
 		typeAvailableStatus,
@@ -332,6 +373,77 @@ func (r *ProjectSetReconciler) resourceQuotaForNamespace(namespace *corev1.Names
 
 	return resourceQuota, nil
 }
+
+
+// Network Policy logic create/update
+// Return
+//   - nil, nil  nothing's changed
+//   - nil, err  error occured
+//   - obj, nil  created/updated object
+func (r *ProjectSetReconciler) createAndUpdateNetworkPolicies(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace) (*corev1.LimitRange, error) {
+
+	//check if defined in instance
+	if instance.Spec.LimitRange.Limits == nil {
+		log.Info("LimitRange is not defined")
+		return nil, nil
+	}
+
+	// Find if limitrange exists
+	limitRangeFound := &corev1.LimitRange{}
+	err := r.Get(ctx, types.NamespacedName{Name: namespace.Name, Namespace: namespace.Name}, limitRangeFound)
+
+	if err != nil && apierrors.IsNotFound(err) {
+
+		// define a new limit range
+		lr, err := r.limitRangeForNamespace(instance, namespace, instance)
+
+		if err != nil {
+			log.Error(err, "Failed to define new ResourceQuota")
+			return nil, err
+		}
+
+		log.Info("Creating a new LimitRange", "Name", lr.Name)
+
+		err = r.Create(ctx, lr)
+
+		if err != nil {
+			log.Error(err, "Failed to create new LimitRange", "Namespace", lr.Namespace, "Name", lr.Name)
+			return nil, err
+		}
+
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Create LimitRange",
+			fmt.Sprintf("LimitRange %s created", lr.Name))
+
+		// limitrange created, return and requeue
+		return lr, nil
+
+	} else if err != nil {
+
+		log.Error(err, "Failed to get LimitRange")
+		// Reconcile failed due to error - requeue
+		return nil, err
+	}
+
+	log.Info("LimitRange exists")
+
+	// Check if it changed
+	// Check resource quota is chnaged
+	if err := r.checkAndUpdateLimitRange(ctx, req, instance, namespace, limitRangeFound); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+
+}
+
+
+
 
 // Limit Range logic create/update
 // Return
