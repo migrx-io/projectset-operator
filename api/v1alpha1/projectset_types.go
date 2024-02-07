@@ -51,7 +51,7 @@ type ProjectSetSpec struct {
 	LimitRange v1.LimitRangeSpec `json:"limitRange,omitempty"`
 
 	// RBAC Role Rules
-	RoleRules map[string][]rolev1.PolicyRule `json:"roleRules,omitempty"`
+	RoleRules map[string]rolev1.PolicyRule `json:"roleRules,omitempty"`
 
 	// User permissions
 	GroupPermissions map[string][]string `json:"groupPermissions,omitempty"`

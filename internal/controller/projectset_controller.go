@@ -275,15 +275,15 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	//
 	// Check role rules
 	//
-	// lr, err := r.createAndUpdateRoleRules(ctx, req, instance, namespaceFound)
-	//
-	// if err != nil {
-	// 	return ctrl.Result{}, err
-	//
-	// } else if lr != nil && err == nil {
-	// 	// if rq was created or changed
-	// 	return ctrl.Result{Requeue: true}, nil
-	// }
+	rl, err := r.createAndUpdateRoleRules(ctx, req, instance, namespaceFound)
+	
+	if err != nil {
+		return ctrl.Result{}, err
+	
+	} else if rl != nil && err == nil {
+		// if rq was created or changed
+		return ctrl.Result{Requeue: true}, nil
+	}
 	//
 	// //
 	// // Check group permissions
@@ -373,6 +373,141 @@ func (r *ProjectSetReconciler) resourceQuotaForNamespace(namespace *corev1.Names
 
 	return resourceQuota, nil
 }
+
+
+func (r *ProjectSetReconciler) checkAndDeleteRoleRule(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace,
+	name string) error {
+
+	// Find if limitrange exists
+	roleRuleFound := &rolev1.PolicyRule{}
+
+	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace.Name}, roleRuleFound)
+
+	if err != nil && apierrors.IsNotFound(err) {
+
+		return nil
+
+	} else if err != nil {
+
+		log.Error(err, "Failed to get RoleRule")
+		// Reconcile failed due to error - requeue
+		return err
+	}
+
+	// delete rule because not found in CR
+	err = r.Delete(ctx, roleRuleFound)
+
+	if err != nil {
+		log.Error(err, "Failed to delete RoleRule", "Namespace", roleRuleFound.Namespace, "Name", roleRuleFound.Name)
+		return err
+	}
+
+	// Save event
+	r.Recorder.Event(instance,
+		"Normal",
+		"Delete RoleRule",
+		fmt.Sprintf("RoleRule %s deleted", roleRuleFound.Name))
+
+	return nil
+
+}
+
+// Role Rule logic create/update
+// Return
+//   - nil, nil  nothing's changed
+//   - nil, err  error occured
+//   - obj, nil  created/updated object
+func (r *ProjectSetReconciler) createAndUpdateRoleRules(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace) (*rolev1.PolicyRule, error) {
+
+	//check if defined in instance
+	if instance.Spec.RoleRules == nil {
+		log.Info("RoleRules is not defined")
+		return nil, nil
+	}
+
+	// Find if limitrange exists
+	roleRuleFound := &rolev1.PolicyRule{}
+
+	// Get existing list of policies
+
+	existingRulesNames, _ := r.roleRulesNamesForNamespace(namespace.Name)
+
+	log.Info("existingRulesNames", "names", existingRulesNames)
+
+	// iterate thru rules policies
+	for ruleName, ruleSpec := range instance.Spec.RoleRules {
+
+		log.Info("Working on role rules", "name", ruleName)
+
+		err := r.Get(ctx, types.NamespacedName{Name: ruleName, Namespace: namespace.Name}, roleRuleFound)
+
+		if err != nil && apierrors.IsNotFound(err) {
+
+			// define a new network policy
+			lr, err := r.roleRuleForNamespace(instance, namespace, ruleName, ruleSpec)
+
+			if err != nil {
+				log.Error(err, "Failed to define new RoleRule")
+				return nil, err
+			}
+
+			log.Info("Creating a new RoleRule", "Name", lr.Name)
+
+			err = r.Create(ctx, lr)
+
+			if err != nil {
+				log.Error(err, "Failed to create new RoleRule", "Namespace", lr.Namespace, "Name", lr.Name)
+				return nil, err
+			}
+
+			// Save event
+			r.Recorder.Event(instance,
+				"Normal",
+				"Create RoleRule",
+				fmt.Sprintf("RoleRule %s created", lr.Name))
+
+			// role policy created, return and requeue
+			return lr, nil
+
+		} else if err != nil {
+
+			log.Error(err, "Failed to get RoleRule")
+			// Reconcile failed due to error - requeue
+			return nil, err
+		}
+
+		// Check if it changed
+		// Check resource quota is chnaged
+		if err := r.checkAndUpdateRoleRule(ctx, req, instance, namespace, ruleName, roleRuleFound); err != nil {
+			return nil, err
+		}
+
+		delete(existingRulesNames, ruleName)
+
+	}
+
+	// iterate thru old network and delete
+
+	for k, _ := range existingRulesNames {
+
+		log.Info("Delete old rule role", "name", k)
+
+		if err := r.checkAndDeleteRoleRule(ctx, req, instance, namespace, k); err != nil {
+			return nil, err
+		}
+	}
+
+	return nil, nil
+
+}
+
+
 
 func (r *ProjectSetReconciler) checkAndDeleteNetworkPolicy(ctx context.Context,
 	req ctrl.Request,
