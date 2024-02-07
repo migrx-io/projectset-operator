@@ -37,6 +37,17 @@ rules:
 - apiGroups:
   - ""
   resources:
+  - networkpolicy
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
   - resourcequotas
   verbs:
   - create
