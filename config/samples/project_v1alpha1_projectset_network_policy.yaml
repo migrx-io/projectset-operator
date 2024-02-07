@@ -1,0 +1,45 @@
+apiVersion: project.migrx.io/v1alpha1
+kind: ProjectSet
+metadata:
+  labels:
+    app.kubernetes.io/name: projectset
+    app.kubernetes.io/instance: projectset
+    app.kubernetes.io/part-of: projectset-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: projectset-operator
+  name: devteam-projectset
+spec:
+  namespace: dev-app
+  labels:
+    app: frontend
+    stage: dev
+  annotations:                                                                                                 
+    app.kubernetes.io/name: dev-app                                                                            
+    app.kubernetes.io/lang: golang  
+
+  policySpec:
+    deny-egress:
+      podSelector:
+        matchLabels: {}
+      policyTypes:
+        - Egress
+
+    deny-ingress:
+      podSelector:
+        matchLabels: {}
+      policyTypes:
+        - Egress
+
+    allow-dns:
+      podSelector:
+        matchLabels: {}
+      policyTypes:
+      - Egress
+      egress:
+      - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        ports:
+        - protocol: UDP
+          port: 54
