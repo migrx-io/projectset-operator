@@ -840,7 +840,7 @@ func (r *ProjectSetReconciler) roleRuleForNamespace(instance *projectv1alpha1.Pr
 	return roleRule, nil
 }
 
-// Check NetworkPolicy changes with ProjectSet
+// Check RoleRule changes with ProjectSet
 func (r *ProjectSetReconciler) checkAndUpdateRoleRule(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
@@ -854,7 +854,7 @@ func (r *ProjectSetReconciler) checkAndUpdateRoleRule(ctx context.Context,
 
 	if !equality.Semantic.DeepDerivative(instance.Spec.RoleRules[name], lr.Rules) {
 
-		log.Info("NetworkPolicy is dirreferent - update from instance")
+		log.Info("RoleRule is dirreferent - update from instance")
 
 		lr.Rules = instance.Spec.RoleRules[name]
 
@@ -865,8 +865,8 @@ func (r *ProjectSetReconciler) checkAndUpdateRoleRule(ctx context.Context,
 		// Save event
 		r.Recorder.Event(instance,
 			"Normal",
-			"Update NetworkPolicy",
-			fmt.Sprintf("NetworkPolicy %s updated", lr.GetName()))
+			"Update RoleRule",
+			fmt.Sprintf("RoleRule %s updated", lr.GetName()))
 
 	}
 
