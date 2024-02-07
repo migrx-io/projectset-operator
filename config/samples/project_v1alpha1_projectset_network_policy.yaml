@@ -31,4 +31,16 @@ spec:
               name: kube-system
         ports:
         - protocol: UDP
-          port: 54
+          port: 53
+
+    deny-egress:
+      podSelector:
+        matchLabels: {}
+      policyTypes:
+        - Egress
+
+    deny-ingress:
+      podSelector:
+        matchLabels: {}
+      policyTypes:
+        - Egress
