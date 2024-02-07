@@ -373,6 +373,46 @@ func (r *ProjectSetReconciler) resourceQuotaForNamespace(namespace *corev1.Names
 	return resourceQuota, nil
 }
 
+func (r *ProjectSetReconciler) checkAndDeleteNetworkPolicy(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace,
+	name string) error {
+
+	// Find if limitrange exists
+	networkPolicyFound := &networkingv1.NetworkPolicy{}
+
+	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace.Name}, networkPolicyFound)
+
+	if err != nil && apierrors.IsNotFound(err) {
+
+		return nil
+
+	} else if err != nil {
+
+		log.Error(err, "Failed to get NetworkPolicy")
+		// Reconcile failed due to error - requeue
+		return err
+	}
+
+	// delete policy because not found in CR
+	err = r.Delete(ctx, networkPolicyFound)
+
+	if err != nil {
+		log.Error(err, "Failed to delete  NetworkPolicy", "Namespace", networkPolicyFound.Namespace, "Name", networkPolicyFound.Name)
+		return err
+	}
+
+	// Save event
+	r.Recorder.Event(instance,
+		"Normal",
+		"Delete NetworkPolicy",
+		fmt.Sprintf("NetworkPolicy %s deleted", networkPolicyFound.Name))
+
+	return nil
+
+}
+
 // Network Policy logic create/update
 // Return
 //   - nil, nil  nothing's changed
@@ -392,8 +432,13 @@ func (r *ProjectSetReconciler) createAndUpdateNetworkPolicies(ctx context.Contex
 	// Find if limitrange exists
 	networkPolicyFound := &networkingv1.NetworkPolicy{}
 
-	// iterate thru network policies
+	// Get existing list of policies
 
+	existingPolicyNames, _ := r.networkPolicyNamesForNamespace(namespace.Name)
+
+	log.Info("existingPolicyNames", "names", existingPolicyNames)
+
+	// iterate thru network policies
 	for netName, netSpec := range instance.Spec.PolicySpec {
 
 		log.Info("Working on network policy", "name", netName)
@@ -435,14 +480,25 @@ func (r *ProjectSetReconciler) createAndUpdateNetworkPolicies(ctx context.Contex
 			return nil, err
 		}
 
-		log.Info("NetworkPolicy exists")
-
 		// Check if it changed
 		// Check resource quota is chnaged
 		if err := r.checkAndUpdateNetworkPolicy(ctx, req, instance, namespace, netName, networkPolicyFound); err != nil {
 			return nil, err
 		}
 
+		delete(existingPolicyNames, netName)
+
+	}
+
+	// iterate thru old network and delete
+
+	for k, _ := range existingPolicyNames {
+
+		log.Info("Delete old networkpolicy", "name", k)
+
+		if err := r.checkAndDeleteNetworkPolicy(ctx, req, instance, namespace, k); err != nil {
+			return nil, err
+		}
 	}
 
 	return nil, nil
@@ -600,6 +656,28 @@ func (r *ProjectSetReconciler) getOrDefaultLimitRange(instance *projectv1alpha1.
 	}
 
 	return instance.Spec.LimitRange.Limits
+
+}
+
+func (r *ProjectSetReconciler) networkPolicyNamesForNamespace(namespace string) (map[string]bool, error) {
+
+	netPolicyNames := make(map[string]bool)
+
+	// Retrieve network policies in the given namespace
+	networkPolicyList := &networkingv1.NetworkPolicyList{}
+	err := r.List(context.TODO(), networkPolicyList, &client.ListOptions{
+		Namespace: namespace,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, np := range networkPolicyList.Items {
+		log.Info("Network Policy", "name", np.Name)
+		netPolicyNames[np.Name] = true
+	}
+
+	return netPolicyNames, nil
 
 }
 
