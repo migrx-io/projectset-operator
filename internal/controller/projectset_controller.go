@@ -39,6 +39,7 @@ import (
 	projectv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	rolev1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -276,10 +277,10 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	// Check role rules
 	//
 	rl, err := r.createAndUpdateRoleRules(ctx, req, instance, namespaceFound)
-	
+
 	if err != nil {
 		return ctrl.Result{}, err
-	
+
 	} else if rl != nil && err == nil {
 		// if rq was created or changed
 		return ctrl.Result{Requeue: true}, nil
@@ -374,7 +375,6 @@ func (r *ProjectSetReconciler) resourceQuotaForNamespace(namespace *corev1.Names
 	return resourceQuota, nil
 }
 
-
 func (r *ProjectSetReconciler) checkAndDeleteRoleRule(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
@@ -382,7 +382,7 @@ func (r *ProjectSetReconciler) checkAndDeleteRoleRule(ctx context.Context,
 	name string) error {
 
 	// Find if limitrange exists
-	roleRuleFound := &rolev1.PolicyRule{}
+	roleRuleFound := &rolev1.Role{}
 
 	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace.Name}, roleRuleFound)
 
@@ -423,7 +423,7 @@ func (r *ProjectSetReconciler) checkAndDeleteRoleRule(ctx context.Context,
 func (r *ProjectSetReconciler) createAndUpdateRoleRules(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
-	namespace *corev1.Namespace) (*rolev1.PolicyRule, error) {
+	namespace *corev1.Namespace) (*rolev1.Role, error) {
 
 	//check if defined in instance
 	if instance.Spec.RoleRules == nil {
@@ -432,7 +432,7 @@ func (r *ProjectSetReconciler) createAndUpdateRoleRules(ctx context.Context,
 	}
 
 	// Find if limitrange exists
-	roleRuleFound := &rolev1.PolicyRule{}
+	roleRuleFound := &rolev1.Role{}
 
 	// Get existing list of policies
 
@@ -506,8 +506,6 @@ func (r *ProjectSetReconciler) createAndUpdateRoleRules(ctx context.Context,
 	return nil, nil
 
 }
-
-
 
 func (r *ProjectSetReconciler) checkAndDeleteNetworkPolicy(ctx context.Context,
 	req ctrl.Request,
@@ -792,6 +790,87 @@ func (r *ProjectSetReconciler) getOrDefaultLimitRange(instance *projectv1alpha1.
 	}
 
 	return instance.Spec.LimitRange.Limits
+
+}
+
+func (r *ProjectSetReconciler) roleRulesNamesForNamespace(namespace string) (map[string]bool, error) {
+
+	rulePolicyNames := make(map[string]bool)
+
+	// Retrieve network policies in the given namespace
+	rulePolicyList := &rolev1.RoleList{}
+	err := r.List(context.TODO(), rulePolicyList, &client.ListOptions{
+		Namespace: namespace,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, np := range rulePolicyList.Items {
+		log.Info("RoleRule Policy", "name", np.Name)
+		rulePolicyNames[np.Name] = true
+	}
+
+	return rulePolicyNames, nil
+
+}
+
+// Rule Policy build logic
+func (r *ProjectSetReconciler) roleRuleForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace, name string, spec []rolev1.PolicyRule) (*rolev1.Role, error) {
+
+	labels := namespace.GetLabels()
+	annotations := namespace.GetAnnotations()
+
+	roleRule := &rolev1.Role{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   namespace.GetName(),
+			Name:        name,
+			Labels:      labels,
+			Annotations: annotations,
+		},
+		Rules: spec,
+	}
+
+	// Set the ownerRef for the Namespace
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	if err := ctrl.SetControllerReference(namespace, roleRule, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return roleRule, nil
+}
+
+// Check NetworkPolicy changes with ProjectSet
+func (r *ProjectSetReconciler) checkAndUpdateRoleRule(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace,
+	name string,
+	lr *rolev1.Role,
+) error {
+
+	// equality.Semantic.DeepDerivative(desiredObj.Spec, runtimeObj.Spec)
+	log.Info("checkAndUpdateRole", "spec", instance.Spec.RoleRules[name], "lr", lr.Rules)
+
+	if !equality.Semantic.DeepDerivative(instance.Spec.RoleRules[name], lr.Rules) {
+
+		log.Info("NetworkPolicy is dirreferent - update from instance")
+
+		lr.Rules = instance.Spec.RoleRules[name]
+
+		if err := r.Update(ctx, lr); err != nil {
+			return err
+		}
+
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Update NetworkPolicy",
+			fmt.Sprintf("NetworkPolicy %s updated", lr.GetName()))
+
+	}
+
+	return nil
 
 }
 
