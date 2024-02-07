@@ -38,6 +38,7 @@ import (
 
 	projectv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -257,15 +258,15 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-    //
+	//
 	// Check network policies
 	//
-	lr, err := r.createAndUpdateNetworkPolicies(ctx, req, instance, namespaceFound)
+	np, err := r.createAndUpdateNetworkPolicies(ctx, req, instance, namespaceFound)
 
 	if err != nil {
 		return ctrl.Result{}, err
 
-	} else if lr != nil && err == nil {
+	} else if np != nil && err == nil {
 		// if rq was created or changed
 		return ctrl.Result{Requeue: true}, nil
 	}
@@ -273,30 +274,28 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	//
 	// Check role rules
 	//
-	lr, err := r.createAndUpdateRoleRules(ctx, req, instance, namespaceFound)
-
-	if err != nil {
-		return ctrl.Result{}, err
-
-	} else if lr != nil && err == nil {
-		// if rq was created or changed
-		return ctrl.Result{Requeue: true}, nil
-	}
-
+	// lr, err := r.createAndUpdateRoleRules(ctx, req, instance, namespaceFound)
 	//
-	// Check group permissions
+	// if err != nil {
+	// 	return ctrl.Result{}, err
 	//
-	lr, err := r.createAndUpdateGroupPermissions(ctx, req, instance, namespaceFound)
-
-	if err != nil {
-		return ctrl.Result{}, err
-
-	} else if lr != nil && err == nil {
-		// if rq was created or changed
-		return ctrl.Result{Requeue: true}, nil
-	}
-
-
+	// } else if lr != nil && err == nil {
+	// 	// if rq was created or changed
+	// 	return ctrl.Result{Requeue: true}, nil
+	// }
+	//
+	// //
+	// // Check group permissions
+	// //
+	// lr, err := r.createAndUpdateGroupPermissions(ctx, req, instance, namespaceFound)
+	//
+	// if err != nil {
+	// 	return ctrl.Result{}, err
+	//
+	// } else if lr != nil && err == nil {
+	// 	// if rq was created or changed
+	// 	return ctrl.Result{Requeue: true}, nil
+	// }
 
 	// Update status if all complete
 	if err := r.setStatus(ctx, req, instance,
@@ -374,7 +373,6 @@ func (r *ProjectSetReconciler) resourceQuotaForNamespace(namespace *corev1.Names
 	return resourceQuota, nil
 }
 
-
 // Network Policy logic create/update
 // Return
 //   - nil, nil  nothing's changed
@@ -383,67 +381,73 @@ func (r *ProjectSetReconciler) resourceQuotaForNamespace(namespace *corev1.Names
 func (r *ProjectSetReconciler) createAndUpdateNetworkPolicies(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
-	namespace *corev1.Namespace) (*corev1.LimitRange, error) {
+	namespace *corev1.Namespace) (*networkingv1.NetworkPolicy, error) {
 
 	//check if defined in instance
-	if instance.Spec.LimitRange.Limits == nil {
-		log.Info("LimitRange is not defined")
+	if instance.Spec.PolicySpec == nil {
+		log.Info("NetworkPolicySpec is not defined")
 		return nil, nil
 	}
 
 	// Find if limitrange exists
-	limitRangeFound := &corev1.LimitRange{}
-	err := r.Get(ctx, types.NamespacedName{Name: namespace.Name, Namespace: namespace.Name}, limitRangeFound)
+	networkPolicyFound := &networkingv1.NetworkPolicy{}
 
-	if err != nil && apierrors.IsNotFound(err) {
+	// iterate thru network policies
 
-		// define a new limit range
-		lr, err := r.limitRangeForNamespace(instance, namespace, instance)
+	for netName, netSpec := range instance.Spec.PolicySpec {
 
-		if err != nil {
-			log.Error(err, "Failed to define new ResourceQuota")
+		log.Info("Working on network policy", "name", netName)
+
+		err := r.Get(ctx, types.NamespacedName{Name: netName, Namespace: namespace.Name}, networkPolicyFound)
+
+		if err != nil && apierrors.IsNotFound(err) {
+
+			// define a new network policy
+			lr, err := r.networkPolicyForNamespace(instance, namespace, netName, netSpec)
+
+			if err != nil {
+				log.Error(err, "Failed to define new NetworkPolicy")
+				return nil, err
+			}
+
+			log.Info("Creating a new NetworkPolicy", "Name", lr.Name)
+
+			err = r.Create(ctx, lr)
+
+			if err != nil {
+				log.Error(err, "Failed to create new NetworkPolicy", "Namespace", lr.Namespace, "Name", lr.Name)
+				return nil, err
+			}
+
+			// Save event
+			r.Recorder.Event(instance,
+				"Normal",
+				"Create NetworkPolicy",
+				fmt.Sprintf("NetworkPolicy %s created", lr.Name))
+
+			// network policy created, return and requeue
+			return lr, nil
+
+		} else if err != nil {
+
+			log.Error(err, "Failed to get NetworkPolicy")
+			// Reconcile failed due to error - requeue
 			return nil, err
 		}
 
-		log.Info("Creating a new LimitRange", "Name", lr.Name)
+		log.Info("NetworkPolicy exists")
 
-		err = r.Create(ctx, lr)
-
-		if err != nil {
-			log.Error(err, "Failed to create new LimitRange", "Namespace", lr.Namespace, "Name", lr.Name)
+		// Check if it changed
+		// Check resource quota is chnaged
+		if err := r.checkAndUpdateNetworkPolicy(ctx, req, instance, namespace, netName, networkPolicyFound); err != nil {
 			return nil, err
 		}
 
-		// Save event
-		r.Recorder.Event(instance,
-			"Normal",
-			"Create LimitRange",
-			fmt.Sprintf("LimitRange %s created", lr.Name))
-
-		// limitrange created, return and requeue
-		return lr, nil
-
-	} else if err != nil {
-
-		log.Error(err, "Failed to get LimitRange")
-		// Reconcile failed due to error - requeue
-		return nil, err
-	}
-
-	log.Info("LimitRange exists")
-
-	// Check if it changed
-	// Check resource quota is chnaged
-	if err := r.checkAndUpdateLimitRange(ctx, req, instance, namespace, limitRangeFound); err != nil {
-		return nil, err
 	}
 
 	return nil, nil
 
 }
-
-
-
 
 // Limit Range logic create/update
 // Return
@@ -596,6 +600,65 @@ func (r *ProjectSetReconciler) getOrDefaultLimitRange(instance *projectv1alpha1.
 	}
 
 	return instance.Spec.LimitRange.Limits
+
+}
+
+// Netwoek Policy build logic
+func (r *ProjectSetReconciler) networkPolicyForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace, name string, spec networkingv1.NetworkPolicySpec) (*networkingv1.NetworkPolicy, error) {
+
+	labels := namespace.GetLabels()
+	annotations := namespace.GetAnnotations()
+
+	networkpolicy := &networkingv1.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   namespace.GetName(),
+			Name:        name,
+			Labels:      labels,
+			Annotations: annotations,
+		},
+		Spec: spec,
+	}
+
+	// Set the ownerRef for the Namespace
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	if err := ctrl.SetControllerReference(namespace, networkpolicy, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return networkpolicy, nil
+}
+
+// Check NetworkPolicy changes with ProjectSet
+func (r *ProjectSetReconciler) checkAndUpdateNetworkPolicy(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace,
+	name string,
+	lr *networkingv1.NetworkPolicy,
+) error {
+
+	// equality.Semantic.DeepDerivative(desiredObj.Spec, runtimeObj.Spec)
+	log.Info("checkAndUpdateNetworkPolicy", "spec", instance.Spec.PolicySpec[name], "lr", lr.Spec)
+
+	if !equality.Semantic.DeepDerivative(instance.Spec.PolicySpec[name], lr.Spec) {
+
+		log.Info("NetworkPolicy is dirreferent - update from instance")
+
+		lr.Spec = instance.Spec.PolicySpec[name]
+
+		if err := r.Update(ctx, lr); err != nil {
+			return err
+		}
+
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Update NetworkPolicy",
+			fmt.Sprintf("NetworkPolicy %s updated", lr.GetName()))
+
+	}
+
+	return nil
 
 }
 

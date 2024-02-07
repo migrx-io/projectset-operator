@@ -19,9 +19,9 @@ package v1alpha1
 import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
+	rolev1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-    networkingv1 "k8s.io/api/networking/v1"
-    rolev1 "k8s.io/api/rbac/v1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -50,16 +50,14 @@ type ProjectSetSpec struct {
 	// LimitRange specification
 	LimitRange v1.LimitRangeSpec `json:"limitRange,omitempty"`
 
-    // RBAC Role Rules
+	// RBAC Role Rules
 	RoleRules map[string][]rolev1.PolicyRule `json:"roleRules,omitempty"`
 
-    // User permissions
+	// User permissions
 	GroupPermissions map[string][]string `json:"groupPermissions,omitempty"`
 
-    // Network Policy specitifation
-    PolicySpec map[string]networkingv1.NetworkPolicySpec `json:"policySpec,omitempty"`
-
-
+	// Network Policy specitifation
+	PolicySpec map[string]networkingv1.NetworkPolicySpec `json:"policySpec,omitempty"`
 }
 
 // ProjectSetStatus defines the observed state of ProjectSet
