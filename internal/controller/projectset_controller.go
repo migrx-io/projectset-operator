@@ -1311,6 +1311,62 @@ func (r *ProjectSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return reconcileRequests
 		})).
+		Watches(&networkingv1.NetworkPolicy{
+			TypeMeta: metav1.TypeMeta{
+				Kind: "NetworkPolicy",
+			},
+		}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+			reconcileRequests := []reconcile.Request{}
+
+			lr := a.(*networkingv1.NetworkPolicy)
+
+			projSet, err := r.findProjectSetByName(ctx, lr.GetAnnotations()["projectset-name"])
+
+			if err != nil {
+				return []reconcile.Request{}
+			}
+
+			for _, config := range projSet {
+				reconcileRequests = append(reconcileRequests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      config.GetName(),
+						Namespace: config.GetNamespace(),
+					},
+				})
+			}
+
+			log.Info("reconcileRequests", "request", reconcileRequests)
+
+			return reconcileRequests
+		})).
+		Watches(&rolev1.Role{
+			TypeMeta: metav1.TypeMeta{
+				Kind: "Role",
+			},
+		}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+			reconcileRequests := []reconcile.Request{}
+
+			lr := a.(*rolev1.Role)
+
+			projSet, err := r.findProjectSetByName(ctx, lr.GetAnnotations()["projectset-name"])
+
+			if err != nil {
+				return []reconcile.Request{}
+			}
+
+			for _, config := range projSet {
+				reconcileRequests = append(reconcileRequests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      config.GetName(),
+						Namespace: config.GetNamespace(),
+					},
+				})
+			}
+
+			log.Info("reconcileRequests", "request", reconcileRequests)
+
+			return reconcileRequests
+		})).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }
