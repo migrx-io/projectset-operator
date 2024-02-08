@@ -286,19 +286,19 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// if rq was created or changed
 		return ctrl.Result{Requeue: true}, nil
 	}
+
 	//
-	// //
-	// // Check group permissions
-	// //
-	// lr, err := r.createAndUpdateGroupPermissions(ctx, req, instance, namespaceFound)
+	// Check group permissions
 	//
-	// if err != nil {
-	// 	return ctrl.Result{}, err
-	//
-	// } else if lr != nil && err == nil {
-	// 	// if rq was created or changed
-	// 	return ctrl.Result{Requeue: true}, nil
-	// }
+	lr, err := r.createAndUpdateGroupPermissions(ctx, req, instance, namespaceFound)
+	
+	if err != nil {
+		return ctrl.Result{}, err
+	
+	} else if lr != nil && err == nil {
+		// if rq was created or changed
+		return ctrl.Result{Requeue: true}, nil
+	}
 
 	// Update status if all complete
 	if err := r.setStatus(ctx, req, instance,
@@ -415,6 +415,100 @@ func (r *ProjectSetReconciler) checkAndDeleteRoleRule(ctx context.Context,
 	return nil
 
 }
+
+
+// Role Binding logic create/update
+// Return
+//   - nil, nil  nothing's changed
+//   - nil, err  error occured
+//   - obj, nil  created/updated object
+func (r *ProjectSetReconciler) createAndUpdateGroupPermissions(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace) (*rolev1.Role, error) {
+
+	//check if defined in instance
+	if instance.Spec.GroupPermissions == nil {
+		log.Info("GroupPermissions is not defined")
+		return nil, nil
+	}
+
+	// Find if exists
+	roleBindFound := &rbacv1.RoleBinding{}
+
+	// Get existing list of bindings
+
+	existingRoleBindNames, _ := r.roleBindNamesForNamespace(namespace.Name)
+
+	log.Info("existingRulesNames", "names", existingRoleBindNames)
+
+	// iterate thru rules policies
+	for groupName, roleNames := range instance.Spec.GroupPermissions {
+
+		log.Info("Working on role bind", "name", groupName)
+
+		err := r.Get(ctx, types.NamespacedName{Name: groupName, Namespace: namespace.Name}, roleBindFound)
+
+		if err != nil && apierrors.IsNotFound(err) {
+
+			// define a new network policy
+			lr, err := r.roleBindForNamespace(instance, namespace, groupName, roleNames)
+
+			if err != nil {
+				log.Error(err, "Failed to define new RoleBinding")
+				return nil, err
+			}
+
+			log.Info("Creating a new RoleBinding", "Name", lr.Name)
+
+			err = r.Create(ctx, lr)
+
+			if err != nil {
+				log.Error(err, "Failed to create new RoleBinding", "Namespace", lr.Namespace, "Name", lr.Name)
+				return nil, err
+			}
+
+			// Save event
+			r.Recorder.Event(instance,
+				"Normal",
+				"Create RoleBinding",
+				fmt.Sprintf("RoleBinding %s created", lr.Name))
+
+			// role policy created, return and requeue
+			return lr, nil
+
+		} else if err != nil {
+
+			log.Error(err, "Failed to get RoleBinding")
+			// Reconcile failed due to error - requeue
+			return nil, err
+		}
+
+		// Check if it changed
+		if err := r.checkAndUpdateRoleBind(ctx, req, instance, namespace, groupName, roleBindFound); err != nil {
+			return nil, err
+		}
+
+		delete(existingRulesNames, ruleName)
+
+	}
+
+	// iterate thru old and delete
+
+	for k, _ := range existingRoleBindNames {
+
+		log.Info("Delete old role binding", "name", k)
+
+		if err := r.checkAndDeleteRoleBind(ctx, req, instance, namespace, k); err != nil {
+			return nil, err
+		}
+	}
+
+	return nil, nil
+
+}
+
+
 
 // Role Rule logic create/update
 // Return
