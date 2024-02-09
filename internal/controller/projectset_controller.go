@@ -1585,6 +1585,33 @@ func (r *ProjectSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return reconcileRequests
 		})).
+		Watches(&rbacv1.RoleBinding{
+			TypeMeta: metav1.TypeMeta{
+				Kind: "RoleBinding",
+			},
+		}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+			reconcileRequests := []reconcile.Request{}
+
+			lr := a.(*rbacv1.RoleBinding)
+
+			projSet, err := r.findProjectSetByName(ctx, lr.GetAnnotations()["projectset-name"])
+
+			if err != nil {
+				return []reconcile.Request{}
+			}
+
+			for _, config := range projSet {
+				reconcileRequests = append(reconcileRequests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      config.GetName(),
+						Namespace: config.GetNamespace(),
+					},
+				})
+			}
+			log.Info("reconcileRequests", "request", reconcileRequests)
+
+			return reconcileRequests
+		})).
 		WithOptions(controller.Options{MaxConcurrentReconciles: 1}).
 		Complete(r)
 }
