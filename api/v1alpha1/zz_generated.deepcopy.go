@@ -130,14 +130,14 @@ func (in *ProjectSetSpec) DeepCopyInto(out *ProjectSetSpec) {
 	}
 	if in.GroupPermissions != nil {
 		in, out := &in.GroupPermissions, &out.GroupPermissions
-		*out = make(map[string][]string, len(*in))
+		*out = make(map[string][]v1.Subject, len(*in))
 		for key, val := range *in {
-			var outVal []string
+			var outVal []v1.Subject
 			if val == nil {
 				(*out)[key] = nil
 			} else {
 				in, out := &val, &outVal
-				*out = make([]string, len(*in))
+				*out = make([]v1.Subject, len(*in))
 				copy(*out, *in)
 			}
 			(*out)[key] = outVal

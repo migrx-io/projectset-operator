@@ -39,7 +39,7 @@ import (
 	projectv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	rolev1 "k8s.io/api/rbac/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
@@ -290,12 +290,12 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	//
 	// Check group permissions
 	//
-	lr, err := r.createAndUpdateGroupPermissions(ctx, req, instance, namespaceFound)
-	
+	rb, err := r.createAndUpdateGroupPermissions(ctx, req, instance, namespaceFound)
+
 	if err != nil {
 		return ctrl.Result{}, err
-	
-	} else if lr != nil && err == nil {
+
+	} else if rb != nil && err == nil {
 		// if rq was created or changed
 		return ctrl.Result{Requeue: true}, nil
 	}
@@ -376,6 +376,46 @@ func (r *ProjectSetReconciler) resourceQuotaForNamespace(namespace *corev1.Names
 	return resourceQuota, nil
 }
 
+func (r *ProjectSetReconciler) checkAndDeleteRoleBind(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace,
+	name string) error {
+
+	// Find if limitrange exists
+	roleRuleFound := &rbacv1.RoleBinding{}
+
+	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace.Name}, roleRuleFound)
+
+	if err != nil && apierrors.IsNotFound(err) {
+
+		return nil
+
+	} else if err != nil {
+
+		log.Error(err, "Failed to get RoleBinding")
+		// Reconcile failed due to error - requeue
+		return err
+	}
+
+	// delete rule because not found in CR
+	err = r.Delete(ctx, roleRuleFound)
+
+	if err != nil {
+		log.Error(err, "Failed to delete RoleBinding", "Namespace", roleRuleFound.Namespace, "Name", roleRuleFound.Name)
+		return err
+	}
+
+	// Save event
+	r.Recorder.Event(instance,
+		"Normal",
+		"Delete RoleBinding",
+		fmt.Sprintf("RoleBinding %s deleted", roleRuleFound.Name))
+
+	return nil
+
+}
+
 func (r *ProjectSetReconciler) checkAndDeleteRoleRule(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
@@ -383,7 +423,7 @@ func (r *ProjectSetReconciler) checkAndDeleteRoleRule(ctx context.Context,
 	name string) error {
 
 	// Find if limitrange exists
-	roleRuleFound := &rolev1.Role{}
+	roleRuleFound := &rbacv1.Role{}
 
 	err := r.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace.Name}, roleRuleFound)
 
@@ -416,7 +456,6 @@ func (r *ProjectSetReconciler) checkAndDeleteRoleRule(ctx context.Context,
 
 }
 
-
 // Role Binding logic create/update
 // Return
 //   - nil, nil  nothing's changed
@@ -425,7 +464,7 @@ func (r *ProjectSetReconciler) checkAndDeleteRoleRule(ctx context.Context,
 func (r *ProjectSetReconciler) createAndUpdateGroupPermissions(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
-	namespace *corev1.Namespace) (*rolev1.Role, error) {
+	namespace *corev1.Namespace) (*rbacv1.RoleBinding, error) {
 
 	//check if defined in instance
 	if instance.Spec.GroupPermissions == nil {
@@ -489,7 +528,7 @@ func (r *ProjectSetReconciler) createAndUpdateGroupPermissions(ctx context.Conte
 			return nil, err
 		}
 
-		delete(existingRulesNames, ruleName)
+		delete(existingRoleBindNames, groupName)
 
 	}
 
@@ -508,8 +547,6 @@ func (r *ProjectSetReconciler) createAndUpdateGroupPermissions(ctx context.Conte
 
 }
 
-
-
 // Role Rule logic create/update
 // Return
 //   - nil, nil  nothing's changed
@@ -518,7 +555,7 @@ func (r *ProjectSetReconciler) createAndUpdateGroupPermissions(ctx context.Conte
 func (r *ProjectSetReconciler) createAndUpdateRoleRules(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
-	namespace *corev1.Namespace) (*rolev1.Role, error) {
+	namespace *corev1.Namespace) (*rbacv1.Role, error) {
 
 	//check if defined in instance
 	if instance.Spec.RoleRules == nil {
@@ -527,7 +564,7 @@ func (r *ProjectSetReconciler) createAndUpdateRoleRules(ctx context.Context,
 	}
 
 	// Find if limitrange exists
-	roleRuleFound := &rolev1.Role{}
+	roleRuleFound := &rbacv1.Role{}
 
 	// Get existing list of policies
 
@@ -888,12 +925,12 @@ func (r *ProjectSetReconciler) getOrDefaultLimitRange(instance *projectv1alpha1.
 
 }
 
-func (r *ProjectSetReconciler) roleRulesNamesForNamespace(namespace string) (map[string]bool, error) {
+func (r *ProjectSetReconciler) roleBindNamesForNamespace(namespace string) (map[string]bool, error) {
 
 	rulePolicyNames := make(map[string]bool)
 
 	// Retrieve network policies in the given namespace
-	rulePolicyList := &rolev1.RoleList{}
+	rulePolicyList := &rbacv1.RoleBindingList{}
 	err := r.List(context.TODO(), rulePolicyList, &client.ListOptions{
 		Namespace: namespace,
 	})
@@ -910,13 +947,65 @@ func (r *ProjectSetReconciler) roleRulesNamesForNamespace(namespace string) (map
 
 }
 
-// Rule Policy build logic
-func (r *ProjectSetReconciler) roleRuleForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace, name string, spec []rolev1.PolicyRule) (*rolev1.Role, error) {
+func (r *ProjectSetReconciler) roleRulesNamesForNamespace(namespace string) (map[string]bool, error) {
+
+	rulePolicyNames := make(map[string]bool)
+
+	// Retrieve network policies in the given namespace
+	rulePolicyList := &rbacv1.RoleList{}
+	err := r.List(context.TODO(), rulePolicyList, &client.ListOptions{
+		Namespace: namespace,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, np := range rulePolicyList.Items {
+		log.Info("RoleRule Policy", "name", np.Name)
+		rulePolicyNames[np.Name] = true
+	}
+
+	return rulePolicyNames, nil
+
+}
+
+// RoleBind Policy build logic
+func (r *ProjectSetReconciler) roleBindForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace, name string, spec []rbacv1.Subject) (*rbacv1.RoleBinding, error) {
 
 	labels := namespace.GetLabels()
 	annotations := namespace.GetAnnotations()
 
-	roleRule := &rolev1.Role{
+	roleRule := &rbacv1.RoleBinding{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace:   namespace.GetName(),
+			Name:        name,
+			Labels:      labels,
+			Annotations: annotations,
+		},
+		Subjects: spec,
+		RoleRef: rbacv1.RoleRef{
+			Kind:     "Role", // or "ClusterRole" for cluster-wide role
+			Name:     name,
+			APIGroup: "rbac.authorization.k8s.io",
+		},
+	}
+
+	// Set the ownerRef for the Namespace
+	// More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/owners-dependents/
+	if err := ctrl.SetControllerReference(namespace, roleRule, r.Scheme); err != nil {
+		return nil, err
+	}
+
+	return roleRule, nil
+}
+
+// Rule Policy build logic
+func (r *ProjectSetReconciler) roleRuleForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace, name string, spec []rbacv1.PolicyRule) (*rbacv1.Role, error) {
+
+	labels := namespace.GetLabels()
+	annotations := namespace.GetAnnotations()
+
+	roleRule := &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
 			Namespace:   namespace.GetName(),
 			Name:        name,
@@ -936,12 +1025,46 @@ func (r *ProjectSetReconciler) roleRuleForNamespace(instance *projectv1alpha1.Pr
 }
 
 // Check RoleRule changes with ProjectSet
+func (r *ProjectSetReconciler) checkAndUpdateRoleBind(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+	namespace *corev1.Namespace,
+	name string,
+	lr *rbacv1.RoleBinding,
+) error {
+
+	// equality.Semantic.DeepDerivative(desiredObj.Spec, runtimeObj.Spec)
+	log.Info("checkAndUpdateRoleBind", "spec", instance.Spec.GroupPermissions[name], "lr", lr.Subjects)
+
+	if !equality.Semantic.DeepDerivative(instance.Spec.GroupPermissions[name], lr.Subjects) {
+
+		log.Info("RoleBinding is dirreferent - update from instance")
+
+		lr.Subjects = instance.Spec.GroupPermissions[name]
+
+		if err := r.Update(ctx, lr); err != nil {
+			return err
+		}
+
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Update RoleBinding",
+			fmt.Sprintf("RoleBinding %s updated", lr.GetName()))
+
+	}
+
+	return nil
+
+}
+
+// Check RoleRule changes with ProjectSet
 func (r *ProjectSetReconciler) checkAndUpdateRoleRule(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
 	namespace *corev1.Namespace,
 	name string,
-	lr *rolev1.Role,
+	lr *rbacv1.Role,
 ) error {
 
 	// equality.Semantic.DeepDerivative(desiredObj.Spec, runtimeObj.Spec)
@@ -1434,14 +1557,14 @@ func (r *ProjectSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 			return reconcileRequests
 		})).
-		Watches(&rolev1.Role{
+		Watches(&rbacv1.Role{
 			TypeMeta: metav1.TypeMeta{
 				Kind: "Role",
 			},
 		}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
 			reconcileRequests := []reconcile.Request{}
 
-			lr := a.(*rolev1.Role)
+			lr := a.(*rbacv1.Role)
 
 			projSet, err := r.findProjectSetByName(ctx, lr.GetAnnotations()["projectset-name"])
 

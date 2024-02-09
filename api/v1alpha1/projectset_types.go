@@ -20,7 +20,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	rolev1 "k8s.io/api/rbac/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -51,10 +51,10 @@ type ProjectSetSpec struct {
 	LimitRange v1.LimitRangeSpec `json:"limitRange,omitempty"`
 
 	// RBAC Role Rules
-	RoleRules map[string][]rolev1.PolicyRule `json:"roleRules,omitempty"`
+	RoleRules map[string][]rbacv1.PolicyRule `json:"roleRules,omitempty"`
 
 	// User permissions
-	GroupPermissions map[string][]string `json:"groupPermissions,omitempty"`
+	GroupPermissions map[string][]rbacv1.Subject `json:"groupPermissions,omitempty"`
 
 	// Network Policy specitifation
 	PolicySpec map[string]networkingv1.NetworkPolicySpec `json:"policySpec,omitempty"`
