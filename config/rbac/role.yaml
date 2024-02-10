@@ -93,3 +93,29 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - project.migrx.io
+  resources:
+  - projectsetsyncs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - project.migrx.io
+  resources:
+  - projectsetsyncs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - project.migrx.io
+  resources:
+  - projectsetsyncs/status
+  verbs:
+  - get
+  - patch
+  - update

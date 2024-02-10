@@ -1,0 +1,18 @@
+apiVersion: project.migrx.io/v1alpha1
+kind: ProjectSetSync
+metadata:
+  labels:
+    app.kubernetes.io/name: projectsetsync
+    app.kubernetes.io/instance: projectsetsync-instance
+    app.kubernetes.io/part-of: projectset-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: projectset-operator
+  name: projectsetsync-instance
+spec:
+  gitRepo: https://github.com/migrx-io/projectset-crds.git
+  envName: test-ocp
+  gitBranch: main
+  gitSecretName: projectset-crds-secret
+  syncSecInterval: 10
+  confFile: projectsets.yaml
+
