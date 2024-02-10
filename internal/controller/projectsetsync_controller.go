@@ -165,8 +165,14 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	//
 	// Git fetch Logic
 	//
-
-	log.Info("Fetch data from git", "Git")
+	log.Info("Fetch data from git",
+		"GitRepo", instance.Spec.GitRepo,
+		"EnvName", instance.Spec.EnvName,
+		"GitBranch", instance.Spec.GitBranch,
+		"GitSecretName", instance.Spec.GitSecretName,
+		"SyncSecInterval", instance.Spec.SyncSecInterval,
+		"ConfFile", instance.Spec.ConfFile,
+	)
 
 	return ctrl.Result{Requeue: true,
 		RequeueAfter: time.Duration(instance.Spec.SyncSecInterval) * time.Second}, nil
