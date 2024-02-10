@@ -185,18 +185,27 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	token := os.Getenv("GIT_TOKEN")
 
-	_, err = git.PlainClone(localDir, false, &git.CloneOptions{
-		Auth: &http.BasicAuth{
-			Username: "projectsetsync",
-			Password: token,
-		},
-		URL:      instance.Spec.GitRepo,
-		Progress: os.Stdout,
-	})
+	// Check if the directory exists
+	if _, err := os.Stat(localDir); os.IsNotExist(err) {
+		log.Info("Directory does not existn", "dir", localDir)
 
-	if err != nil {
-		log.Error(err, "Error cloning repository")
-		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+		_, err = git.PlainClone(localDir, false, &git.CloneOptions{
+			Auth: &http.BasicAuth{
+				Username: "projectsetsync",
+				Password: token,
+			},
+			URL:      instance.Spec.GitRepo,
+			Progress: os.Stdout,
+		})
+
+		if err != nil {
+			log.Error(err, "Error cloning repository")
+			return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+		}
+
+	} else {
+		log.Info("Directory exists", "dir", localDir)
+
 	}
 
 	// Open the repository
@@ -217,8 +226,14 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		Branch: plumbing.NewBranchReferenceName(instance.Spec.GitBranch),
 	})
 	if err != nil {
-
 		log.Error(err, "Error checking out branch")
+		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+	}
+
+	// Pull last changes
+	err = worktree.Pull(&git.PullOptions{})
+	if err != nil && err != git.NoErrAlreadyUpToDate {
+		log.Error(err, "Error pull out branch")
 		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
 	}
 
