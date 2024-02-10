@@ -245,6 +245,13 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
 	}
 
+	// check files and apply
+	err = r.readCRD(ctx, req, instance)
+	if err != nil {
+		log.Error(err, "Error read CR")
+		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+	}
+
 	// update status
 	if err := r.setStatus(ctx, req, instance,
 		typeAvailableStatus,
@@ -292,6 +299,64 @@ func (r *ProjectSetSyncReconciler) doFinalizerOperations(cr *projectv1alpha1.Pro
 	//	"Warning",
 	//	"Deleting",
 	//	fmt.Sprintf("Custom Resource %s is being deleted", cr.Name))
+
+}
+
+
+func (r *ProjectSetSyncReconciler) readConfig(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSetSync) error {
+
+	dirPath := "/tmp/" + instance.Spec.EnvName + "/" + instance.Spec.ConfFile
+
+
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		log.Error(err, "Error reading repo dir")
+		return err
+	}
+	defer dir.Close()
+
+	files, err := dir.Readdir(0)
+	if err != nil {
+		log.Error(err, "Error reading files dir")
+		return err
+	}
+
+	for _, file := range files {
+		log.Info("readCRD", "file", file.Name())
+	}
+
+	return nil
+
+}
+
+
+func (r *ProjectSetSyncReconciler) readCRD(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSetSync) error {
+
+	dirPath := "/tmp/" + instance.Spec.EnvName + "/" + instance.Spec.ConfFile
+
+
+	dir, err := os.Open(dirPath)
+	if err != nil {
+		log.Error(err, "Error reading repo dir")
+		return err
+	}
+	defer dir.Close()
+
+	files, err := dir.Readdir(0)
+	if err != nil {
+		log.Error(err, "Error reading files dir")
+		return err
+	}
+
+	for _, file := range files {
+		log.Info("readCRD", "file", file.Name())
+	}
+
+	return nil
 
 }
 
