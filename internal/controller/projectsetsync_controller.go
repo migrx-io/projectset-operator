@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -33,10 +34,16 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	projectv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
+
+	"github.com/go-git/go-git/v5"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport/http"
 )
 
 // Finilizer name
 const projectSetSyncFinalizer = "projectsetssync.project.migrx.io/finalizer"
+
+const ERR_TIMEOUT = 10
 
 // ProjectSetSyncReconciler reconciles a ProjectSetSync object
 type ProjectSetSyncReconciler struct {
@@ -174,6 +181,48 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		"ConfFile", instance.Spec.ConfFile,
 	)
 
+	localDir := "/tmp/" + instance.Spec.EnvName
+
+	token := os.Getenv("GIT_TOKEN")
+
+	_, err = git.PlainClone(localDir, false, &git.CloneOptions{
+		Auth: &http.BasicAuth{
+			Username: "projectsetsync",
+			Password: token,
+		},
+		URL:      instance.Spec.GitRepo,
+		Progress: os.Stdout,
+	})
+
+	if err != nil {
+		log.Error(err, "Error cloning repository")
+		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+	}
+
+	// Open the repository
+	repo, err := git.PlainOpen(localDir)
+	if err != nil {
+		log.Error(err, "Error opening repository")
+		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+	}
+
+	// Checkout to the desired branch
+	worktree, err := repo.Worktree()
+	if err != nil {
+		log.Error(err, "Error geting worktree")
+		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+	}
+
+	err = worktree.Checkout(&git.CheckoutOptions{
+		Branch: plumbing.NewBranchReferenceName(instance.Spec.GitBranch),
+	})
+	if err != nil {
+
+		log.Error(err, "Error checking out branch")
+		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+	}
+
+	// sleep and check again
 	return ctrl.Result{Requeue: true,
 		RequeueAfter: time.Duration(instance.Spec.SyncSecInterval) * time.Second}, nil
 
