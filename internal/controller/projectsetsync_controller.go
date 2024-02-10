@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"time"
 
@@ -28,7 +27,7 @@ import (
 	logger "sigs.k8s.io/controller-runtime/pkg/log"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
+	_ "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -41,7 +40,7 @@ import (
 )
 
 // Finilizer name
-const projectSetSyncFinalizer = "projectsetssync.project.migrx.io/finalizer"
+const projectSetSyncFinalizer = "projectsetsync.project.migrx.io/finalizer"
 
 const ERR_TIMEOUT = 10
 
@@ -108,12 +107,16 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Add a finalizer. Then, we can define some operations which should
 	// occurs before the custom resource to be deleted.
 	//
-	if !controllerutil.ContainsFinalizer(instance, projectSetFinalizer) {
+	if !controllerutil.ContainsFinalizer(instance, projectSetSyncFinalizer) {
 
 		log.Info("Adding Finalizer")
-		if ok := controllerutil.AddFinalizer(instance, projectSetFinalizer); !ok {
+		if ok := controllerutil.AddFinalizer(instance, projectSetSyncFinalizer); !ok {
 			log.Error(err, "Failed to add finalizer into the custom resource")
 			return ctrl.Result{Requeue: true}, nil
+		}
+
+		if err := r.Update(ctx, instance); err != nil {
+			return ctrl.Result{}, err
 		}
 
 	}
@@ -124,8 +127,10 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	//
 	isMarkedToBeDeleted := instance.GetDeletionTimestamp() != nil
 
+	log.Info("isMarkedToBeDeleted", "timestamp", instance.GetDeletionTimestamp(), "deletestate", isMarkedToBeDeleted)
+
 	if isMarkedToBeDeleted {
-		if controllerutil.ContainsFinalizer(instance, projectSetFinalizer) {
+		if controllerutil.ContainsFinalizer(instance, projectSetSyncFinalizer) {
 
 			log.Info("Performing Finalizer Operations before delete CR")
 
@@ -157,7 +162,7 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 			// Remove finilizers
 			log.Info("Removing Finalizer after successfully perform the operations")
-			if ok := controllerutil.RemoveFinalizer(instance, projectSetFinalizer); !ok {
+			if ok := controllerutil.RemoveFinalizer(instance, projectSetSyncFinalizer); !ok {
 				log.Error(err, "Failed to remove finalizer")
 				return ctrl.Result{Requeue: true}, nil
 			}
@@ -166,6 +171,9 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 				log.Error(err, "Failed to remove finalizer")
 				return ctrl.Result{}, err
 			}
+
+			return ctrl.Result{Requeue: true}, nil
+
 		}
 	}
 
@@ -237,6 +245,15 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
 	}
 
+	// update status
+	if err := r.setStatus(ctx, req, instance,
+		typeAvailableStatus,
+		metav1.ConditionTrue,
+		"Reconciling",
+		"Reconciling is done"); err != nil {
+
+	}
+
 	// sleep and check again
 	return ctrl.Result{Requeue: true,
 		RequeueAfter: time.Duration(instance.Spec.SyncSecInterval) * time.Second}, nil
@@ -259,10 +276,22 @@ func (r *ProjectSetSyncReconciler) doFinalizerOperations(cr *projectv1alpha1.Pro
 	//eventtype is the type of this event, and is either Normal or Warning.
 	// The following implementation will raise an event
 
-	r.Recorder.Event(cr,
-		"Warning",
-		"Deleting",
-		fmt.Sprintf("Custom Resource %s is being deleted", cr.Name))
+	// rm dir
+
+	localDir := "/tmp/" + cr.Spec.EnvName
+
+	log.Info("Remove repo dir")
+
+	err := os.RemoveAll(localDir)
+
+	if err != nil {
+		log.Error(err, "Error removing repo dir")
+	}
+
+	//r.Recorder.Event(cr,
+	//	"Warning",
+	//	"Deleting",
+	//	fmt.Sprintf("Custom Resource %s is being deleted", cr.Name))
 
 }
 
@@ -274,34 +303,34 @@ func (r *ProjectSetSyncReconciler) setStatus(ctx context.Context,
 	reason, message string) error {
 
 	// Refetch last state
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		log.Error(err, "Failed to re-fetch instance")
-		return err
-	}
-
-	// Set condition
-	meta.SetStatusCondition(&instance.Status.Conditions,
-		metav1.Condition{Type: statusType,
-			Status:  status,
-			Reason:  reason,
-			Message: message})
-
-	// Update state
-	if err := r.Status().Update(ctx, instance); err != nil {
-		log.Error(err, "Failed to update instance status")
-		return err
-	}
-
-	if err := r.Update(ctx, instance); err != nil {
-		log.Error(err, "Failed to update instance")
-		return err
-	}
-
-	// Refetch last state
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		log.Error(err, "Failed to re-fetch instance")
-		return err
-	}
+	// if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+	// 	log.Error(err, "Failed to re-fetch instance")
+	// 	return err
+	// }
+	//
+	// // Set condition
+	// meta.SetStatusCondition(&instance.Status.Conditions,
+	// 	metav1.Condition{Type: statusType,
+	// 		Status:  status,
+	// 		Reason:  reason,
+	// 		Message: message})
+	//
+	// // Update state
+	// if err := r.Status().Update(ctx, instance); err != nil {
+	// 	log.Error(err, "Failed to update instance status")
+	// 	return err
+	// }
+	//
+	// if err := r.Update(ctx, instance); err != nil {
+	// 	log.Error(err, "Failed to update instance")
+	// 	return err
+	// }
+	//
+	// // Refetch last state
+	// if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+	// 	log.Error(err, "Failed to re-fetch instance")
+	// 	return err
+	// }
 
 	return nil
 }
