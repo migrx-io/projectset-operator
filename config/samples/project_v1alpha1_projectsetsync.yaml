@@ -10,7 +10,7 @@ metadata:
   name: projectsetsync-instance
 spec:
   gitRepo: https://github.com/migrx-io/projectset-crds.git
-  envName: test-ocp
+  envName: test-ocp-cluster
   gitBranch: main
   gitSecretName: projectset-crds-secret
   syncSecInterval: 10

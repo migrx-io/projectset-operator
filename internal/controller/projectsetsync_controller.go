@@ -17,8 +17,10 @@ limitations under the License.
 package controller
 
 import (
+	"bytes"
 	"context"
 	"os"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,6 +31,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	_ "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -37,6 +40,10 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport/http"
+
+	"gopkg.in/yaml.v2"
+
+	apiyaml "k8s.io/apimachinery/pkg/util/yaml"
 )
 
 // Finilizer name
@@ -245,10 +252,53 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
 	}
 
+	// read repo manifest
+
+	config, err := r.readConfig(ctx, req, instance)
+	if err != nil {
+		log.Error(err, "Error read config")
+		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+	}
+
+	env := config["envs"][instance.Spec.EnvName]
+
+	templates := env["projectset-templates"]
+	crds := env["projectset-crds"]
+
+	log.Info("go to env",
+		"templates", templates,
+		"crds", crds,
+	)
+
 	// check files and apply
-	err = r.readCRD(ctx, req, instance)
+	templateFiles, err := r.readCRD(instance, templates)
 	if err != nil {
 		log.Error(err, "Error read CR")
+		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+	}
+
+	// Apply to cluster
+	log.Info("Apply templates", "files", templateFiles)
+
+	//err = r.applyCRD(ctx, templateFiles)
+	//if err != nil {
+	//	log.Error(err, "Error apply templates CR")
+	//	return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+	//}
+
+	// check files and apply
+	crdFiles, err := r.readCRD(instance, crds)
+	if err != nil {
+		log.Error(err, "Error read CR")
+		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+	}
+
+	log.Info("Apply crds", "files", crdFiles)
+
+	// Apply to cluster
+	err = r.applyProjectSet(ctx, req, crdFiles)
+	if err != nil {
+		log.Error(err, "Error apply projectset CR")
 		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
 	}
 
@@ -302,61 +352,148 @@ func (r *ProjectSetSyncReconciler) doFinalizerOperations(cr *projectv1alpha1.Pro
 
 }
 
+type Config map[string]map[string]map[string]string
 
 func (r *ProjectSetSyncReconciler) readConfig(ctx context.Context,
 	req ctrl.Request,
-	instance *projectv1alpha1.ProjectSetSync) error {
+	instance *projectv1alpha1.ProjectSetSync) (Config, error) {
 
-	dirPath := "/tmp/" + instance.Spec.EnvName + "/" + instance.Spec.ConfFile
+	confPath := "/tmp/" + instance.Spec.EnvName + "/" + instance.Spec.ConfFile
 
-
-	dir, err := os.Open(dirPath)
+	file, err := os.Open(confPath)
 	if err != nil {
-		log.Error(err, "Error reading repo dir")
+		log.Error(err, "Error reading repo conf file")
+		return nil, err
+	}
+	defer file.Close()
+
+	decoder := yaml.NewDecoder(file)
+
+	var config Config
+
+	// Decode the YAML data into the struct
+	if err := decoder.Decode(&config); err != nil {
+		log.Error(err, "Error decoding YAML data")
+		return nil, err
+	}
+
+	log.Info("config", "data", config)
+
+	return config, nil
+
+}
+
+// createOrUpdateCustomResource creates or updates the given Custom Resource
+func (r *ProjectSetSyncReconciler) createOrUpdateProjectSet(ctx context.Context, req ctrl.Request, projectset *projectv1alpha1.ProjectSet) error {
+	// Check if the Custom Resource already exists
+
+	projectset.Spec.LimitRange.Limits = getOrDefaultLimitRange(projectset)
+
+	found := &projectv1alpha1.ProjectSet{}
+	err := r.Get(ctx, types.NamespacedName{Name: projectset.Name}, found)
+
+	//log.Info("GET error", "err", err)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// Custom Resource not found, create it
+			err = r.Create(ctx, projectset)
+			if err != nil {
+				log.Error(err, "Error create projectset")
+				return err
+			}
+			return nil
+		}
+
+		//log.Error(err, "Error GET")
+		// Error occurred while retrieving the Custom Resource
 		return err
 	}
-	defer dir.Close()
 
-	files, err := dir.Readdir(0)
+	// Custom Resource found, update it
+	found.Spec = projectset.Spec // Update with desired state
+	err = r.Update(ctx, found)
 	if err != nil {
-		log.Error(err, "Error reading files dir")
+		log.Error(err, "Error update projectset")
 		return err
 	}
+	return nil
+}
 
-	for _, file := range files {
-		log.Info("readCRD", "file", file.Name())
+func (r *ProjectSetSyncReconciler) applyProjectSet(ctx context.Context, req ctrl.Request,
+	crdsPath []string) error {
+
+	for _, file := range crdsPath {
+
+		log.Info("Read yaml", "file", file)
+
+		// Read the content of the YAML file
+		yamlFile, err := os.ReadFile(file)
+		if err != nil {
+			log.Error(err, "Error reading YAML file")
+		}
+
+		obj := &projectv1alpha1.ProjectSet{}
+
+		// Unmarshal the YAML content into the unstructured object
+		decoder := apiyaml.NewYAMLOrJSONDecoder(bytes.NewReader(yamlFile), 4096)
+		if err := decoder.Decode(obj); err != nil {
+			log.Error(err, "Error decoding YAML content")
+		}
+
+		log.Info("Parse k8s obj", "obj", obj)
+
+		// Apply the Custom Resource
+		err = r.createOrUpdateProjectSet(ctx, req, obj)
+		if err != nil {
+			log.Error(err, "Error applying Custom Resource")
+		}
+
 	}
 
 	return nil
 
 }
 
+func (r *ProjectSetSyncReconciler) readCRD(instance *projectv1alpha1.ProjectSetSync,
+	crdsPath string) ([]string, error) {
 
-func (r *ProjectSetSyncReconciler) readCRD(ctx context.Context,
-	req ctrl.Request,
-	instance *projectv1alpha1.ProjectSetSync) error {
+	crds := []string{}
 
-	dirPath := "/tmp/" + instance.Spec.EnvName + "/" + instance.Spec.ConfFile
+	dirPath := "/tmp/" + instance.Spec.EnvName + "/" + crdsPath
 
+	log.Info("check CRD in dir", "dir", dirPath)
+
+	// if dir not exists - skip
+	if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+		log.Info("Dir not found", "name", dirPath)
+		return crds, nil
+	}
 
 	dir, err := os.Open(dirPath)
 	if err != nil {
 		log.Error(err, "Error reading repo dir")
-		return err
+		return nil, err
 	}
 	defer dir.Close()
 
 	files, err := dir.Readdir(0)
 	if err != nil {
 		log.Error(err, "Error reading files dir")
-		return err
+		return nil, err
 	}
 
+	// collect files
 	for _, file := range files {
-		log.Info("readCRD", "file", file.Name())
+
+		if strings.HasSuffix(file.Name(), ".yaml") {
+			log.Info("readCRD", "file", file.Name())
+
+			crds = append(crds, dirPath+"/"+file.Name())
+		}
+
 	}
 
-	return nil
+	return crds, nil
 
 }
 

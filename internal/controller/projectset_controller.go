@@ -907,7 +907,7 @@ func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
 
 // Get default limits limitRange
 // hack to avoid validation issue
-func (r *ProjectSetReconciler) getOrDefaultLimitRange(instance *projectv1alpha1.ProjectSet) []corev1.LimitRangeItem {
+func getOrDefaultLimitRange(instance *projectv1alpha1.ProjectSet) []corev1.LimitRangeItem {
 
 	log.Info("Ckeck limits in LimitRange and set")
 
@@ -1186,7 +1186,7 @@ func (r *ProjectSetReconciler) limitRangeForNamespace(instance *projectv1alpha1.
 			Annotations: annotations,
 		},
 		Spec: corev1.LimitRangeSpec{
-			Limits: r.getOrDefaultLimitRange(instance),
+			Limits: getOrDefaultLimitRange(instance),
 		},
 	}
 
@@ -1406,7 +1406,7 @@ func (r *ProjectSetReconciler) setStatus(ctx context.Context,
 
 	// FIXME, hack to resolve validation issue, implement default vaules in webhook
 	// Patch default LimitRange to fix issue with required fields
-	instance.Spec.LimitRange.Limits = r.getOrDefaultLimitRange(instance)
+	instance.Spec.LimitRange.Limits = getOrDefaultLimitRange(instance)
 
 	if err := r.Update(ctx, instance); err != nil {
 		log.Error(err, "Failed to update instance")
