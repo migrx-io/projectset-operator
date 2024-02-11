@@ -186,6 +186,72 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
+
+    //
+    // check instance template and fill data if template exists
+    //
+
+    if instance.Spec.Template != nil {
+
+        log.Info("check template", "name", instance.Spec.Template)
+
+	    templateFound := &projectv1alpha1.ProjectSetTemplate{}
+
+	    err = r.Get(ctx, types.NamespacedName{Name: instance.Spec.Template}, templateFound)
+
+	    if err != nil && apierrors.IsNotFound(err) {
+            return nil
+
+        } else if err != nil {
+			log.Error(err, "Failed to load template")
+			return err
+		}
+
+        // template exist -> fill instance
+        
+        // labels
+        labels := templateFound.Spec.Labels
+
+        for k, v := range instance.Spec.Labels {
+		    labels[k] = v
+	    }
+
+        instance.Spec.Labels = labels
+
+        // labels
+        annotations := templateFound.Spec.Annotations
+
+        for k, v := range instance.Spec.Annotations {
+		    annotations[k] = v
+	    }
+
+        annotations.Spec.Labels = labels
+
+    
+        // other fields if set in instance - use it
+        // if not - use template
+
+
+	}
+
+	//
+	// Object exists - compare states
+	//
+
+	//
+	// Check namaspace is chnaged
+	//
+	if err := r.checkAndUpdateNamespace(ctx, req, instance, namespaceFound); err != nil {
+		return ctrl.Result{}, err
+	}
+
+
+
+
+
+    }
+
+
 	//
 	// Namespace Logic
 	//
