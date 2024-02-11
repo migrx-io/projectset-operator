@@ -3,10 +3,101 @@ kind: ProjectSetTemplate
 metadata:
   labels:
     app.kubernetes.io/name: projectsettemplate
-    app.kubernetes.io/instance: projectsettemplate-sample
+    app.kubernetes.io/instance: dev-small
     app.kubernetes.io/part-of: projectset-operator
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: projectset-operator
-  name: projectsettemplate-sample
+  name: dev-small
 spec:
-  # TODO(user): Add fields here
+
+  labels:
+    stage: dev
+  annotations:
+    app.kubernetes.io/name: dev-app
+
+  roleRules:
+    developer:
+      - apiGroups:
+          - ""
+          - apps
+        resources:
+          - configmaps
+          - deployments
+          - pods
+          - pods/log
+        verbs: ["*"]
+
+    admin:
+      - apiGroups:
+          - ""
+          - apps
+          - autoscaling
+          - batch
+          - extensions
+          - policy
+          - rbac.authorization.k8s.io
+          - networking.k8s.io
+          - storage.k8s.io
+          - metrics.k8s.io
+        resources:
+          - configmaps
+          - daemonsets
+          - deployments
+          - events
+          - endpoints
+          - jobs
+          - pods
+          - pods/log
+          - pods/exec
+          - persistentvolumes
+          - persistentvolumeclaims
+          - secrets
+          - serviceaccounts
+          - services
+          - statefulsets
+        verbs: ["*"]
+
+  groupPermissions:
+    admin:
+      - kind: "Group"
+        name: "developer"
+      - kind: "Group"
+        name: "admin"
+    developer:
+      - kind: "Group"
+        name: "developer"
+
+  resourceQuota:
+    hard:
+      requests.cpu: "2"
+      requests.memory: 3Gi
+      limits.cpu: "4"
+      limits.memory: 6Gi
+
+  policySpec:
+
+    allow-dns:
+      podSelector:
+        matchLabels: {}
+      policyTypes:
+      - Egress
+      egress:
+      - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+        ports:
+        - protocol: UDP
+          port: 53
+
+    deny-egress:
+      podSelector:
+        matchLabels: {}
+      policyTypes:
+        - Egress
+
+    deny-ingress:
+      podSelector:
+        matchLabels: {}
+      policyTypes:
+        - Egress
