@@ -1,0 +1,27 @@
+# permissions for end users to view projectsettemplates.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: projectsettemplate-viewer-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: projectset-operator
+    app.kubernetes.io/part-of: projectset-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: projectsettemplate-viewer-role
+rules:
+- apiGroups:
+  - project.migrx.io
+  resources:
+  - projectsettemplates
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - project.migrx.io
+  resources:
+  - projectsettemplates/status
+  verbs:
+  - get

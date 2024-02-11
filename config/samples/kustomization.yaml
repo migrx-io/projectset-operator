@@ -2,4 +2,5 @@
 resources:
 - project_v1alpha1_projectset.yaml
 - project_v1alpha1_projectsetsync.yaml
+- project_v1alpha1_projectsettemplate.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

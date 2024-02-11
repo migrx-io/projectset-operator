@@ -29,4 +29,12 @@ resources:
   kind: ProjectSetSync
   path: github.com/migrx-io/projectset-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: migrx.io
+  group: project
+  kind: ProjectSetTemplate
+  path: github.com/migrx-io/projectset-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"
