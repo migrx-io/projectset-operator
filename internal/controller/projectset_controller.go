@@ -69,6 +69,7 @@ type ProjectSetReconciler struct {
 //+kubebuilder:rbac:groups=core,resources=limitranges,verbs=get;list;watch;create;update;delete
 //+kubebuilder:rbac:groups=core,resources=networkpolicy,verbs=get;list;watch;create;update;delete
 //+kubebuilder:rbac:groups=core,resources=role,verbs=get;list;watch;create;update;delete
+//+kubebuilder:rbac:groups=core,resources=rolebinding,verbs=get;list;watch;create;update;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
