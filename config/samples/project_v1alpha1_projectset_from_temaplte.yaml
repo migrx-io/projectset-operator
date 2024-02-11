@@ -1,0 +1,17 @@
+apiVersion: project.migrx.io/v1alpha1
+kind: ProjectSet
+metadata:
+  labels:
+    app.kubernetes.io/name: projectset
+    app.kubernetes.io/instance: projectset
+    app.kubernetes.io/part-of: projectset-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: projectset-operator
+  name: devteam-projectset
+spec:
+  namespace: dev-app
+  labels:
+    app: frontend-orig
+  annotations:                                                                                                 
+    app.kubernetes.io/name: dev-app-orig 
+  template: dev-small

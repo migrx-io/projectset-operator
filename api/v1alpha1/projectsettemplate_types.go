@@ -33,9 +33,6 @@ type ProjectSetTemplateSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Namespace name
-	NamespaceSuffix string `json:"namespaceSuffix"`
-
 	// Custom namespace labels
 	Labels map[string]string `json:"labels,omitempty"`
 

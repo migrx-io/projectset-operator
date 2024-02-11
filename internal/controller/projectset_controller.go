@@ -186,71 +186,13 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 	}
 
-
-    //
-    // check instance template and fill data if template exists
-    //
-
-    if instance.Spec.Template != nil {
-
-        log.Info("check template", "name", instance.Spec.Template)
-
-	    templateFound := &projectv1alpha1.ProjectSetTemplate{}
-
-	    err = r.Get(ctx, types.NamespacedName{Name: instance.Spec.Template}, templateFound)
-
-	    if err != nil && apierrors.IsNotFound(err) {
-            return nil
-
-        } else if err != nil {
-			log.Error(err, "Failed to load template")
-			return err
-		}
-
-        // template exist -> fill instance
-        
-        // labels
-        labels := templateFound.Spec.Labels
-
-        for k, v := range instance.Spec.Labels {
-		    labels[k] = v
-	    }
-
-        instance.Spec.Labels = labels
-
-        // labels
-        annotations := templateFound.Spec.Annotations
-
-        for k, v := range instance.Spec.Annotations {
-		    annotations[k] = v
-	    }
-
-        annotations.Spec.Labels = labels
-
-    
-        // other fields if set in instance - use it
-        // if not - use template
-
-
-	}
-
 	//
-	// Object exists - compare states
+	// Check template if exists
 	//
 
-	//
-	// Check namaspace is chnaged
-	//
-	if err := r.checkAndUpdateNamespace(ctx, req, instance, namespaceFound); err != nil {
+	if err := r.checkAndUpdateTemplate(ctx, req, instance); err != nil {
 		return ctrl.Result{}, err
 	}
-
-
-
-
-
-    }
-
 
 	//
 	// Namespace Logic
@@ -1089,6 +1031,83 @@ func (r *ProjectSetReconciler) roleRuleForNamespace(instance *projectv1alpha1.Pr
 	}
 
 	return roleRule, nil
+}
+
+// Check Template with ProjectSet
+func (r *ProjectSetReconciler) checkAndUpdateTemplate(ctx context.Context,
+	req ctrl.Request,
+	instance *projectv1alpha1.ProjectSet,
+) error {
+
+	log.Info("checkAndUpdateTemplate", "name", instance.Spec.Template)
+
+	//
+	// check instance template and fill data if template exists
+	//
+
+	if &instance.Spec.Template != nil {
+
+		log.Info("check template", "name", instance.Spec.Template)
+
+		templateFound := &projectv1alpha1.ProjectSetTemplate{}
+
+		err := r.Get(ctx, types.NamespacedName{Name: instance.Spec.Template}, templateFound)
+
+		if err != nil && apierrors.IsNotFound(err) {
+			return nil
+
+		} else if err != nil {
+			log.Error(err, "Failed to load template")
+			return err
+		}
+
+		// template exist -> fill instance
+
+		// labels
+		labels := templateFound.Spec.Labels
+
+		for k, v := range instance.Spec.Labels {
+			labels[k] = v
+		}
+
+		instance.Spec.Labels = labels
+
+		// labels
+		annotations := templateFound.Spec.Annotations
+
+		for k, v := range instance.Spec.Annotations {
+			annotations[k] = v
+		}
+
+		instance.Spec.Annotations = annotations
+
+		// other fields if set in instance - use it
+		// if not - use template
+
+		if &instance.Spec.ResourceQuota == nil {
+			instance.Spec.ResourceQuota = templateFound.Spec.ResourceQuota
+		}
+
+		if &instance.Spec.LimitRange == nil {
+			instance.Spec.LimitRange = templateFound.Spec.LimitRange
+		}
+
+		if &instance.Spec.RoleRules == nil {
+			instance.Spec.RoleRules = templateFound.Spec.RoleRules
+		}
+
+		if &instance.Spec.GroupPermissions == nil {
+			instance.Spec.GroupPermissions = templateFound.Spec.GroupPermissions
+		}
+
+		if &instance.Spec.PolicySpec == nil {
+			instance.Spec.PolicySpec = templateFound.Spec.PolicySpec
+		}
+
+	}
+
+	return nil
+
 }
 
 // Check RoleRule changes with ProjectSet

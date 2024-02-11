@@ -161,9 +161,6 @@ spec:
                 required:
                 - limits
                 type: object
-              namespaceSuffix:
-                description: Namespace name
-                type: string
               policySpec:
                 additionalProperties:
                   description: NetworkPolicySpec provides the specification of a NetworkPolicy
@@ -788,8 +785,6 @@ spec:
                   type: array
                 description: RBAC Role Rules
                 type: object
-            required:
-            - namespaceSuffix
             type: object
           status:
             description: ProjectSetTemplateStatus defines the observed state of ProjectSetTemplate
