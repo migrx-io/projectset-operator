@@ -419,8 +419,34 @@ func (r *ProjectSetSyncReconciler) createOrUpdateProjectSet(ctx context.Context,
 	return nil
 }
 
+func (r *ProjectSetSyncReconciler) listClusterProjectSet() (map[string]bool, error) {
+
+	listProjectSet := make(map[string]bool)
+
+	// Retrieve network policies in the given namespace
+	projectSetList := &projectv1alpha1.ProjectSetList{}
+	err := r.List(context.TODO(), projectSetList, &client.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ps := range projectSetList.Items {
+		log.Info("project set", "name", ps.Name)
+		listProjectSet[ps.Name] = true
+	}
+
+	return listProjectSet, nil
+
+}
+
 func (r *ProjectSetSyncReconciler) applyProjectSet(ctx context.Context, req ctrl.Request,
 	crdsPath []string) error {
+
+	// check if needs to delete
+	existingList, err := r.listClusterProjectSet()
+	if err != nil {
+		log.Error(err, "Failed to get listClusterProjectSet")
+	}
 
 	for _, file := range crdsPath {
 
@@ -448,6 +474,49 @@ func (r *ProjectSetSyncReconciler) applyProjectSet(ctx context.Context, req ctrl
 			log.Error(err, "Error applying Custom Resource")
 		}
 
+		delete(existingList, obj.Name)
+
+	}
+
+	// iterate thru old and delete
+	for k, _ := range existingList {
+
+		log.Info("Delete old project set", "name", k)
+
+		if err := r.checkAndDeleteProjectSet(ctx, req, k); err != nil {
+
+			log.Error(err, "Failed to delete old ProjectSet")
+			return nil
+		}
+	}
+
+	return nil
+
+}
+
+func (r *ProjectSetSyncReconciler) checkAndDeleteProjectSet(ctx context.Context,
+	req ctrl.Request,
+	name string) error {
+
+	found := &projectv1alpha1.ProjectSet{}
+	err := r.Get(ctx, types.NamespacedName{Name: name}, found)
+
+	if err != nil && apierrors.IsNotFound(err) {
+		return nil
+
+	} else if err != nil {
+
+		log.Error(err, "Failed to get ProjectSet")
+		// Reconcile failed due to error - requeue
+		return err
+	}
+
+	// delete policy because not found in CR
+	err = r.Delete(ctx, found)
+
+	if err != nil {
+		log.Error(err, "Failed to delete ProjectSet")
+		return err
 	}
 
 	return nil
