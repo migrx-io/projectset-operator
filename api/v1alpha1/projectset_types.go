@@ -36,7 +36,7 @@ type ProjectSetSpec struct {
 	Namespace string `json:"namespace"`
 
 	// ProjectSet templates
-	Templates []string `json:"templates,omitempty"`
+	Template string `json:"template,omitempty"`
 
 	// Custom namespace labels
 	Labels map[string]string `json:"labels,omitempty"`

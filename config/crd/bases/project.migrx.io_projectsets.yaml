@@ -791,11 +791,9 @@ spec:
                   type: array
                 description: RBAC Role Rules
                 type: object
-              templates:
+              template:
                 description: ProjectSet templates
-                items:
-                  type: string
-                type: array
+                type: string
             required:
             - namespace
             type: object
