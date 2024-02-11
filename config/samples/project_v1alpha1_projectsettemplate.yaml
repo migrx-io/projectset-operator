@@ -10,7 +10,6 @@ metadata:
   name: dev-small
 spec:
 
-  namespaceSuffix: dev-small
   labels:
     stage: dev
   annotations:
