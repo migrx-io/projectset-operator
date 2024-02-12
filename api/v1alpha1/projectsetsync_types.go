@@ -38,10 +38,6 @@ type ProjectSetSyncSpec struct {
 	// +kubebuilder:default=main
 	GitBranch string `json:"gitBranch,omitempty"`
 
-	// Git secret reference name, default projectset-crds-secret
-	// +kubebuilder:default=projectset-crds-secret
-	GitSecretName string `json:"gitSecretName,omitempty"`
-
 	// Sync interval in sec, default 10
 	// +kubebuilder:default=10
 	SyncSecInterval int `json:"syncSecInterval,omitempty"`

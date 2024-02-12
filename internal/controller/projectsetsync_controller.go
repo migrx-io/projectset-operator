@@ -191,7 +191,6 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 		"GitRepo", instance.Spec.GitRepo,
 		"EnvName", instance.Spec.EnvName,
 		"GitBranch", instance.Spec.GitBranch,
-		"GitSecretName", instance.Spec.GitSecretName,
 		"SyncSecInterval", instance.Spec.SyncSecInterval,
 		"ConfFile", instance.Spec.ConfFile,
 	)

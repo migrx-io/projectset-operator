@@ -59,10 +59,6 @@ spec:
               gitRepo:
                 description: Git repo URL
                 type: string
-              gitSecretName:
-                default: projectset-crds-secret
-                description: Git secret reference name, default projectset-crds-secret
-                type: string
               syncSecInterval:
                 default: 10
                 description: Sync interval in sec, default 10
