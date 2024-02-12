@@ -797,7 +797,7 @@ func (r *ProjectSetReconciler) createAndUpdateLimitRange(ctx context.Context,
 	isDelete := false
 
 	//check if defined in instance
-	if instance.Spec.LimitRange.Limits == nil {
+	if len(instance.Spec.LimitRange.Limits) == 0 {
 		log.Info("LimitRange is not defined")
 
 		isDelete = true
