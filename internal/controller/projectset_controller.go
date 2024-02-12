@@ -1061,14 +1061,22 @@ func (r *ProjectSetReconciler) checkAndUpdateTemplate(ctx context.Context,
 			return err
 		}
 
+		log.Info("Template exists", "template", templateFound)
+
 		// template exist -> fill instance
 
 		// labels
 		labels := templateFound.Spec.Labels
 
+		log.Info("Template labels", "labels", labels)
+
+		log.Info("Instance labels", "labels", instance.Spec.Labels)
+
 		for k, v := range instance.Spec.Labels {
 			labels[k] = v
 		}
+
+		log.Info("Template mergered labels", "labels", labels)
 
 		instance.Spec.Labels = labels
 
@@ -1084,27 +1092,42 @@ func (r *ProjectSetReconciler) checkAndUpdateTemplate(ctx context.Context,
 		// other fields if set in instance - use it
 		// if not - use template
 
+		log.Info("checkAndUpdateTemplate", "instance.Spec.ResourceQuota", &instance.Spec.ResourceQuota)
+
 		if &instance.Spec.ResourceQuota == nil {
+			log.Info("ResourceQuota is nil, update from template")
 			instance.Spec.ResourceQuota = templateFound.Spec.ResourceQuota
 		}
 
 		if &instance.Spec.LimitRange == nil {
+			log.Info("LimitRange is nil, update from template")
 			instance.Spec.LimitRange = templateFound.Spec.LimitRange
 		}
 
 		if &instance.Spec.RoleRules == nil {
+			log.Info("RoleRules is nil, update from template")
 			instance.Spec.RoleRules = templateFound.Spec.RoleRules
 		}
 
 		if &instance.Spec.GroupPermissions == nil {
+			log.Info("GroupPermissions is nil, update from template")
 			instance.Spec.GroupPermissions = templateFound.Spec.GroupPermissions
 		}
 
 		if &instance.Spec.PolicySpec == nil {
+			log.Info("PolicySpec is nil, update from template")
 			instance.Spec.PolicySpec = templateFound.Spec.PolicySpec
 		}
 
+		log.Info("checkAndUpdateTemplate", "instance", instance.Spec)
+
 	}
+
+	// Upate instance
+	//if err := r.Update(ctx, instance); err != nil {
+	//	log.Error(err, "Failed to update instance")
+	//	return err
+	//}
 
 	return nil
 
