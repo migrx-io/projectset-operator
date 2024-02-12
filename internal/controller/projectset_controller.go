@@ -1383,8 +1383,8 @@ func (r *ProjectSetReconciler) checkAndUpdateNamespace(ctx context.Context,
 
 	// if label or annotations changed - update namespace
 	// apiequality.Semantic.DeepDerivative(desiredObj.Spec, runtimeObj.Spec)
-	if !utils.IsMapSubset(namespace.ObjectMeta.Labels, instance.Spec.Labels) ||
-		!utils.IsMapSubset(namespace.ObjectMeta.Annotations, instance.Spec.Annotations) {
+	if !utils.IsMapSubset(instance.Spec.Labels, namespace.ObjectMeta.Labels) ||
+		!utils.IsMapSubset(instance.Spec.Annotations, namespace.ObjectMeta.Annotations) {
 
 		log.Info("Namespace labels or annotations are dirreferent - update from instance")
 
