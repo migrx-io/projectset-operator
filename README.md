@@ -17,12 +17,16 @@ kubectl apply -f https://raw.githubusercontent.com/migrx-io/projectset-operator/
 2. Create secret with GitHub/GitLab token (for ProsetSetSync CRD)
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/migrx-io/projectset-operator/main/config/manifests.yaml
+ kubectl create secret generic projectsetsync-secret \                                        
+      --namespace projectset-operator-system \                                                          
+      --from-literal=token=<GIT_TOKEN>
+
 ```
+
 
 ## Development
 
-### Install CRDsr
+### Install CRDs
 Install Operator Instances of Custom Resources:
 
 ```sh
