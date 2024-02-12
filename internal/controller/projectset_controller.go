@@ -699,10 +699,13 @@ func (r *ProjectSetReconciler) createAndUpdateNetworkPolicies(ctx context.Contex
 	instance *projectv1alpha1.ProjectSet,
 	namespace *corev1.Namespace) (*networkingv1.NetworkPolicy, error) {
 
+	//isDelete := false
+
 	//check if defined in instance
 	if instance.Spec.PolicySpec == nil {
 		log.Info("NetworkPolicySpec is not defined")
-		return nil, nil
+		//return nil, nil
+		//isDelete = true
 	}
 
 	// Find if limitrange exists
@@ -791,17 +794,21 @@ func (r *ProjectSetReconciler) createAndUpdateLimitRange(ctx context.Context,
 	instance *projectv1alpha1.ProjectSet,
 	namespace *corev1.Namespace) (*corev1.LimitRange, error) {
 
+	isDelete := false
+
 	//check if defined in instance
 	if instance.Spec.LimitRange.Limits == nil {
 		log.Info("LimitRange is not defined")
-		return nil, nil
+
+		isDelete = true
+		//return nil, nil
 	}
 
 	// Find if limitrange exists
 	limitRangeFound := &corev1.LimitRange{}
 	err := r.Get(ctx, types.NamespacedName{Name: namespace.Name, Namespace: namespace.Name}, limitRangeFound)
 
-	if err != nil && apierrors.IsNotFound(err) {
+	if err != nil && apierrors.IsNotFound(err) && !isDelete {
 
 		// define a new limit range
 		lr, err := r.limitRangeForNamespace(instance, namespace, instance)
@@ -829,6 +836,10 @@ func (r *ProjectSetReconciler) createAndUpdateLimitRange(ctx context.Context,
 		// limitrange created, return and requeue
 		return lr, nil
 
+	} else if err != nil && apierrors.IsNotFound(err) && isDelete {
+
+		return nil, nil
+
 	} else if err != nil {
 
 		log.Error(err, "Failed to get LimitRange")
@@ -838,10 +849,27 @@ func (r *ProjectSetReconciler) createAndUpdateLimitRange(ctx context.Context,
 
 	log.Info("LimitRange exists")
 
-	// Check if it changed
-	// Check resource quota is chnaged
-	if err := r.checkAndUpdateLimitRange(ctx, req, instance, namespace, limitRangeFound); err != nil {
-		return nil, err
+	if isDelete {
+
+		// delete rule because not found in CR
+		err = r.Delete(ctx, limitRangeFound)
+		if err != nil {
+			return nil, err
+		}
+
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Delete LimitRange",
+			fmt.Sprintf("LimitRange %s deleted", limitRangeFound.GetName()))
+
+	} else {
+
+		// Check if it changed
+		// Check resource quota is chnaged
+		if err := r.checkAndUpdateLimitRange(ctx, req, instance, namespace, limitRangeFound); err != nil {
+			return nil, err
+		}
 	}
 
 	return nil, nil
