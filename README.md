@@ -14,7 +14,7 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 kubectl apply -f https://raw.githubusercontent.com/migrx-io/projectset-operator/main/config/manifests.yaml
 ```
 
-2. Create secret with GitHub/GitLab token (for ProsetSetSync CRD)
+2. Create secret with GitHub/GitLab token (for ProsetSetSync to sync CRDs from git repo)
 
 ```sh
  kubectl create secret generic projectsetsync-secret \                                        
