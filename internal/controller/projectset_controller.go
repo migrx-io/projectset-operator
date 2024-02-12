@@ -858,17 +858,20 @@ func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
 	instance *projectv1alpha1.ProjectSet,
 	namespace *corev1.Namespace) (*corev1.ResourceQuota, error) {
 
+	isDelete := false
+
 	//check if defined in instance
 	if instance.Spec.ResourceQuota.Hard == nil {
 		log.Info("Resource quota is not defined")
-		return nil, nil
+		//return nil, nil
+		isDelete = true
 	}
 
 	// Find if resourcequota exists
 	resourceQuotaFound := &corev1.ResourceQuota{}
 	err := r.Get(ctx, types.NamespacedName{Name: namespace.Name, Namespace: namespace.Name}, resourceQuotaFound)
 
-	if err != nil && apierrors.IsNotFound(err) {
+	if err != nil && apierrors.IsNotFound(err) && !isDelete {
 
 		// define a new resourcequota
 		rq, err := r.resourceQuotaForNamespace(namespace, instance)
@@ -896,6 +899,10 @@ func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
 		// resourcequota created, return and requeue
 		return rq, nil
 
+	} else if err != nil && apierrors.IsNotFound(err) && isDelete {
+
+		return nil, nil
+
 	} else if err != nil {
 
 		log.Error(err, "Failed to get ResourceQuota")
@@ -905,10 +912,28 @@ func (r *ProjectSetReconciler) createAndUpdateResourceQuota(ctx context.Context,
 
 	log.Info("ResourceQuota exists")
 
-	// Check if it changed
-	// Check resource quota is chnaged
-	if err := r.checkAndUpdateResourceQuota(ctx, req, instance, namespace, resourceQuotaFound); err != nil {
-		return nil, err
+	if isDelete {
+
+		// delete rule because not found in CR
+		err = r.Delete(ctx, resourceQuotaFound)
+		if err != nil {
+			return nil, err
+		}
+
+		// Save event
+		r.Recorder.Event(instance,
+			"Normal",
+			"Delete ResourceQuota",
+			fmt.Sprintf("ResourceQuota %s deleted", resourceQuotaFound.GetName()))
+
+	} else {
+
+		// Check if it changed
+		// Check resource quota is chnaged
+		if err := r.checkAndUpdateResourceQuota(ctx, req, instance, namespace, resourceQuotaFound); err != nil {
+			return nil, err
+		}
+
 	}
 
 	return nil, nil
