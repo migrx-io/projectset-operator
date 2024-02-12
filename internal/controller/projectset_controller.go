@@ -1092,29 +1092,30 @@ func (r *ProjectSetReconciler) checkAndUpdateTemplate(ctx context.Context,
 		// other fields if set in instance - use it
 		// if not - use template
 
-		log.Info("checkAndUpdateTemplate", "instance.Spec.ResourceQuota", &instance.Spec.ResourceQuota)
-
-		if &instance.Spec.ResourceQuota == nil {
+		if instance.Spec.ResourceQuota.Hard == nil {
 			log.Info("ResourceQuota is nil, update from template")
 			instance.Spec.ResourceQuota = templateFound.Spec.ResourceQuota
 		}
 
-		if &instance.Spec.LimitRange == nil {
+		if len(instance.Spec.LimitRange.Limits) == 0 {
 			log.Info("LimitRange is nil, update from template")
 			instance.Spec.LimitRange = templateFound.Spec.LimitRange
+
+			//override if template set limits to nil
+			instance.Spec.LimitRange.Limits = getOrDefaultLimitRange(instance)
 		}
 
-		if &instance.Spec.RoleRules == nil {
+		if instance.Spec.RoleRules == nil {
 			log.Info("RoleRules is nil, update from template")
 			instance.Spec.RoleRules = templateFound.Spec.RoleRules
 		}
 
-		if &instance.Spec.GroupPermissions == nil {
+		if instance.Spec.GroupPermissions == nil {
 			log.Info("GroupPermissions is nil, update from template")
 			instance.Spec.GroupPermissions = templateFound.Spec.GroupPermissions
 		}
 
-		if &instance.Spec.PolicySpec == nil {
+		if instance.Spec.PolicySpec == nil {
 			log.Info("PolicySpec is nil, update from template")
 			instance.Spec.PolicySpec = templateFound.Spec.PolicySpec
 		}
@@ -1122,12 +1123,6 @@ func (r *ProjectSetReconciler) checkAndUpdateTemplate(ctx context.Context,
 		log.Info("checkAndUpdateTemplate", "instance", instance.Spec)
 
 	}
-
-	// Upate instance
-	//if err := r.Update(ctx, instance); err != nil {
-	//	log.Error(err, "Failed to update instance")
-	//	return err
-	//}
 
 	return nil
 

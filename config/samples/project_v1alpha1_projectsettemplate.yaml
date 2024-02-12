@@ -11,9 +11,9 @@ metadata:
 spec:
 
   labels:
-    stage: dev
+    stage: dev-from-template
   annotations:
-    app.kubernetes.io/name: dev-app
+    app.kubernetes.io/template: dev-small
 
   roleRules:
     developer:
@@ -73,6 +73,22 @@ spec:
       requests.memory: 3Gi
       limits.cpu: "4"
       limits.memory: 6Gi
+
+  limitRange:
+    limits:
+      - default:
+          cpu: 500m
+          memory: "50Mi"
+        defaultRequest:
+          cpu: 500m
+          memory: "50Mi"
+        max:
+          cpu: "1"
+          memory: "4Gi"
+        min:
+          cpu: 100m
+          memory: "50Mi"
+        type: Container
 
   policySpec:
 

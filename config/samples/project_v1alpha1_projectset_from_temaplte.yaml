@@ -12,6 +12,6 @@ spec:
   namespace: dev-app
   labels:
     app: frontend-orig
-  annotations:                                                                                                 
-    app.kubernetes.io/name: dev-app-orig 
+  annotations:
+    app.kubernetes.io/name: dev-app-orig
   template: dev-small
