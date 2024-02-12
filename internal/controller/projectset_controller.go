@@ -479,7 +479,7 @@ func (r *ProjectSetReconciler) createAndUpdateGroupPermissions(ctx context.Conte
 	//check if defined in instance
 	if instance.Spec.GroupPermissions == nil {
 		log.Info("GroupPermissions is not defined")
-		return nil, nil
+		//return nil, nil
 	}
 
 	// Find if exists
@@ -570,7 +570,7 @@ func (r *ProjectSetReconciler) createAndUpdateRoleRules(ctx context.Context,
 	//check if defined in instance
 	if instance.Spec.RoleRules == nil {
 		log.Info("RoleRules is not defined")
-		return nil, nil
+		//return nil, nil
 	}
 
 	// Find if limitrange exists
