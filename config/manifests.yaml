@@ -2283,7 +2283,7 @@ spec:
         - --leader-elect
         command:
         - /manager
-        image: migrx/projectset-operator:latest
+        image: migrx/projectset-operator:v0.1.0
         livenessProbe:
           httpGet:
             path: /healthz

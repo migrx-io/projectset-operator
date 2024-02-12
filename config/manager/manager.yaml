@@ -70,7 +70,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: migrx/projectset-operator:latest
+        image: migrx/projectset-operator:v0.1.0
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
