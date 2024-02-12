@@ -61,6 +61,7 @@ type ProjectSetReconciler struct {
 }
 
 //+kubebuilder:rbac:groups=project.migrx.io,resources=projectsets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=project.migrx.io,resources=projectsetstemplate,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=project.migrx.io,resources=projectsets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=project.migrx.io,resources=projectsets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
@@ -1549,6 +1550,32 @@ func (r *ProjectSetReconciler) doFinalizerOperations(cr *projectv1alpha1.Project
 
 }
 
+func (r *ProjectSetReconciler) findProjectSetByKeyValue(ctx context.Context, key string, value string) ([]projectv1alpha1.ProjectSet, error) {
+
+	psList := &projectv1alpha1.ProjectSetList{}
+
+	listPsFound := []projectv1alpha1.ProjectSet{}
+
+	err := r.List(ctx, psList)
+
+	if err != nil {
+
+		// Error reading the object - requeue the request.
+		log.Error(err, "Failed to get ProjectSet")
+		return nil, err
+	}
+
+	for _, ps := range psList.Items {
+
+		if ps.Spec.Template == value {
+			listPsFound = append(listPsFound, ps)
+		}
+	}
+
+	return listPsFound, nil
+
+}
+
 func (r *ProjectSetReconciler) findProjectSetByName(ctx context.Context, name string) ([]projectv1alpha1.ProjectSet, error) {
 
 	psFound := &projectv1alpha1.ProjectSet{}
@@ -1713,6 +1740,32 @@ func (r *ProjectSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				})
 			}
 			log.Info("reconcileRequests", "request", reconcileRequests)
+
+			return reconcileRequests
+		})).
+		Watches(&projectv1alpha1.ProjectSetTemplate{
+			TypeMeta: metav1.TypeMeta{
+				Kind: "ProjectSetTemplate",
+			},
+		}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, a client.Object) []reconcile.Request {
+			reconcileRequests := []reconcile.Request{}
+
+			lr := a.(*projectv1alpha1.ProjectSetTemplate)
+
+			projSet, err := r.findProjectSetByKeyValue(ctx, "Template", lr.GetName())
+
+			if err != nil {
+				return []reconcile.Request{}
+			}
+
+			for _, config := range projSet {
+				reconcileRequests = append(reconcileRequests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      config.GetName(),
+						Namespace: config.GetNamespace(),
+					},
+				})
+			}
 
 			return reconcileRequests
 		})).
