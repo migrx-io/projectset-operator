@@ -70,7 +70,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: projectset-operator:latest
+        image: migrx/projectset-operator:latest
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
@@ -96,7 +96,7 @@ spec:
             cpu: 500m
             memory: 512Mi
           requests:
-            cpu: 500mm
+            cpu: 500m
             memory: 512Mi
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
