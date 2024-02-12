@@ -280,11 +280,12 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 	// Apply to cluster
 	log.Info("Apply templates", "files", templateFiles)
 
-	//err = r.applyCRD(ctx, templateFiles)
-	//if err != nil {
-	//	log.Error(err, "Error apply templates CR")
-	//	return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
-	//}
+	// Apply to cluster
+	err = r.applyProjectSetTemplate(ctx, req, templateFiles)
+	if err != nil {
+		log.Error(err, "Error apply projectset CR")
+		return ctrl.Result{Requeue: true, RequeueAfter: ERR_TIMEOUT * time.Second}, nil
+	}
 
 	// check files and apply
 	crdFiles, err := r.readCRD(instance, crds)
@@ -384,6 +385,40 @@ func (r *ProjectSetSyncReconciler) readConfig(ctx context.Context,
 }
 
 // createOrUpdateCustomResource creates or updates the given Custom Resource
+func (r *ProjectSetSyncReconciler) createOrUpdateProjectSetTemplate(ctx context.Context, req ctrl.Request, projectset *projectv1alpha1.ProjectSetTemplate) error {
+	// Check if the Custom Resource already exists
+
+	found := &projectv1alpha1.ProjectSetTemplate{}
+	err := r.Get(ctx, types.NamespacedName{Name: projectset.Name}, found)
+
+	//log.Info("GET error", "err", err)
+	if err != nil {
+		if apierrors.IsNotFound(err) {
+			// Custom Resource not found, create it
+			err = r.Create(ctx, projectset)
+			if err != nil {
+				log.Error(err, "Error create projectset")
+				return err
+			}
+			return nil
+		}
+
+		//log.Error(err, "Error GET")
+		// Error occurred while retrieving the Custom Resource
+		return err
+	}
+
+	// Custom Resource found, update it
+	found.Spec = projectset.Spec // Update with desired state
+	err = r.Update(ctx, found)
+	if err != nil {
+		log.Error(err, "Error update projectset")
+		return err
+	}
+	return nil
+}
+
+// createOrUpdateCustomResource creates or updates the given Custom Resource
 func (r *ProjectSetSyncReconciler) createOrUpdateProjectSet(ctx context.Context, req ctrl.Request, projectset *projectv1alpha1.ProjectSet) error {
 	// Check if the Custom Resource already exists
 
@@ -439,6 +474,81 @@ func (r *ProjectSetSyncReconciler) listClusterProjectSet() (map[string]bool, err
 
 }
 
+func (r *ProjectSetSyncReconciler) listClusterProjectSetTemplate() (map[string]bool, error) {
+
+	listProjectSet := make(map[string]bool)
+
+	// Retrieve network policies in the given namespace
+	projectSetList := &projectv1alpha1.ProjectSetTemplateList{}
+	err := r.List(context.TODO(), projectSetList, &client.ListOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, ps := range projectSetList.Items {
+		log.Info("project set template", "name", ps.Name)
+		listProjectSet[ps.Name] = true
+	}
+
+	return listProjectSet, nil
+
+}
+
+func (r *ProjectSetSyncReconciler) applyProjectSetTemplate(ctx context.Context, req ctrl.Request,
+	crdsPath []string) error {
+
+	// check if needs to delete
+	existingList, err := r.listClusterProjectSetTemplate()
+	if err != nil {
+		log.Error(err, "Failed to get listClusterProjectSetTemplate")
+	}
+
+	for _, file := range crdsPath {
+
+		log.Info("Read yaml", "file", file)
+
+		// Read the content of the YAML file
+		yamlFile, err := os.ReadFile(file)
+		if err != nil {
+			log.Error(err, "Error reading YAML file")
+		}
+
+		obj := &projectv1alpha1.ProjectSetTemplate{}
+
+		// Unmarshal the YAML content into the unstructured object
+		decoder := apiyaml.NewYAMLOrJSONDecoder(bytes.NewReader(yamlFile), 4096)
+		if err := decoder.Decode(obj); err != nil {
+			log.Error(err, "Error decoding YAML content")
+		}
+
+		log.Info("Parse k8s obj", "obj", obj)
+
+		// Apply the Custom Resource
+		err = r.createOrUpdateProjectSetTemplate(ctx, req, obj)
+		if err != nil {
+			log.Error(err, "Error applying Custom Resource")
+		}
+
+		delete(existingList, obj.Name)
+
+	}
+
+	// iterate thru old and delete
+	for k, _ := range existingList {
+
+		log.Info("Delete old project set template", "name", k)
+
+		if err := r.checkAndDeleteProjectSetTemplate(ctx, req, k); err != nil {
+
+			log.Error(err, "Failed to delete old ProjectSet")
+			return nil
+		}
+	}
+
+	return nil
+
+}
+
 func (r *ProjectSetSyncReconciler) applyProjectSet(ctx context.Context, req ctrl.Request,
 	crdsPath []string) error {
 
@@ -488,6 +598,35 @@ func (r *ProjectSetSyncReconciler) applyProjectSet(ctx context.Context, req ctrl
 			log.Error(err, "Failed to delete old ProjectSet")
 			return nil
 		}
+	}
+
+	return nil
+
+}
+
+func (r *ProjectSetSyncReconciler) checkAndDeleteProjectSetTemplate(ctx context.Context,
+	req ctrl.Request,
+	name string) error {
+
+	found := &projectv1alpha1.ProjectSetTemplate{}
+	err := r.Get(ctx, types.NamespacedName{Name: name}, found)
+
+	if err != nil && apierrors.IsNotFound(err) {
+		return nil
+
+	} else if err != nil {
+
+		log.Error(err, "Failed to get ProjectSet")
+		// Reconcile failed due to error - requeue
+		return err
+	}
+
+	// delete policy because not found in CR
+	err = r.Delete(ctx, found)
+
+	if err != nil {
+		log.Error(err, "Failed to delete ProjectSet")
+		return err
 	}
 
 	return nil
