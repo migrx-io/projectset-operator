@@ -5,11 +5,11 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - '["*"]'
+  - '*'
   resources:
-  - '["*"]'
+  - '*'
   verbs:
-  - '["*"]'
+  - '*'
 - apiGroups:
   - ""
   resources:
@@ -141,6 +141,17 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - roles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - roles.rbac.authorization.k8s.io
+  resources:
+  - '*'
   verbs:
   - create
   - delete
