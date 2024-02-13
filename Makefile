@@ -266,6 +266,7 @@ endif
 .PHONY: allinone
 allinone: manifests kustomize
 	$(KUSTOMIZE) build config/crd > config/manifests.yaml
+	echo "---" >> config/manifests.yaml
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG} && cd -
 	$(KUSTOMIZE) build config/default >> config/manifests.yaml
 
