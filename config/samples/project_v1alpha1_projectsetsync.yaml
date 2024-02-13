@@ -12,6 +12,6 @@ spec:
   gitRepo: https://github.com/migrx-io/projectset-crds.git
   envName: test-ocp-cluster
   gitBranch: main
-  syncSecInterval: 10
+  syncSecInterval: 15
   confFile: projectsets.yaml
 

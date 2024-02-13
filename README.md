@@ -25,7 +25,7 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
     ```
 
     ```
-    TOKEN=$(cat ../projectset-crds/.secret|base64)
+    TOKEN=$(cat ../projectset-crds/.secret)
     kubectl create secret generic projectsetsync-secret --namespace projectset-operator-system --from-literal=token=$TOKEN
 
     ```
