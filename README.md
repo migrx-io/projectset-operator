@@ -19,7 +19,7 @@ kubectl apply -f https://raw.githubusercontent.com/migrx-io/projectset-operator/
 ```sh
  kubectl create secret generic projectsetsync-secret \                                        
       --namespace projectset-operator-system \                                                          
-      --from-literal=token=<GIT_TOKEN>
+      --from-literal=token=<base64(GIT_TOKEN)>
 
 ```
 
