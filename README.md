@@ -8,13 +8,29 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 
 ### Install on cluster 
 
-1. Install Operator and all CRs
+1. Create operator namespace
+
+    ```sh
+    kubectl create ns generic projectset-operator-system
+
+    ```
+
+2. Create secret with GitHub/GitLab token (for ProsetSetSync to sync CRDs from git repo)
+
+    ```sh
+    kubectl create secret generic projectsetsync-secret \                                        
+        --namespace projectset-operator-system \                                                          
+        --from-literal=token=<base64(GIT_TOKEN)>
+
+    ```
+
+3. Install Operator and all CRs
 
     ```sh
     kubectl apply -f https://raw.githubusercontent.com/migrx-io/projectset-operator/main/config/manifests.yaml
     ```
 
-2. Create git repo to host CRDs (Optional) 
+4. Create git repo to host CRDs (Optional) 
 
     To support GitOps approach you can create git repo 
 
@@ -53,16 +69,8 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 
     ```
 
-3. Create secret with GitHub/GitLab token (for ProsetSetSync to sync CRDs from git repo)
 
-    ```sh
-    kubectl create secret generic projectsetsync-secret \                                        
-        --namespace projectset-operator-system \                                                          
-        --from-literal=token=<base64(GIT_TOKEN)>
-
-    ```
-
-4. Create CRD ProjectSet/ProjectSetTemplate (without GitOps)
+5. Create CRD ProjectSet/ProjectSetTemplate (without GitOps)
 
     See examples here https://github.com/migrx-io/projectset-operator/tree/main/config/samples
 
@@ -71,7 +79,7 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 
     ```
 
-4. Create CRD ProjectSet/ProjectSetTemplate (GitOps)
+6. Create CRD ProjectSet/ProjectSetTemplate (GitOps)
 
     Create ProjectSync configuration
 
