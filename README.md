@@ -10,58 +10,101 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 
 1. Install Operator and all CRs
 
-```sh
-kubectl apply -f https://raw.githubusercontent.com/migrx-io/projectset-operator/main/config/manifests.yaml
-```
+    ```sh
+    kubectl apply -f https://raw.githubusercontent.com/migrx-io/projectset-operator/main/config/manifests.yaml
+    ```
 
 2. Create git repo to host CRDs (Optional) 
 
-To support GitOps approach you can create git repo 
+    To support GitOps approach you can create git repo 
 
-Example structure https://github.com/migrx-io/projectset-crds.git
+    Example structure https://github.com/migrx-io/projectset-crds.git
 
-```
+    ```
 
-├── common-templates
-├── prod-ocp                           # env declaration
-│   └── test-ocp
-│       ├── crds                       # env crds/projectsets
-│       └── templates                  # env templates/projectsettemplates
-...
-├── projectsets.yaml                   # env metadata (define here envs)
-...
-└── test-ocp                           # env declarations
-    ├── crds
-    │   ├── dev-app-template.yaml
-    │   └── dev-app.yaml
-    └── templates
-        └── dev-small.yaml
+    ├── common-templates
+    ├── prod-ocp                           # env declaration
+    │   └── test-ocp
+    │       ├── crds                       # env crds/projectsets
+    │       └── templates                  # env templates/projectsettemplates
+    ...
+    ├── projectsets.yaml                   # env metadata (define here envs)
+    ...
+    └── test-ocp                           # env declarations
+        ├── crds
+        │   ├── dev-app-template.yaml
+        │   └── dev-app.yaml
+        └── templates
+            └── dev-small.yaml
 
-```
+    ```
 
-Define cluster env in **projectsets.yaml** in roor git repo
+    Define cluster env in **projectsets.yaml** in roor git repo
 
-```
-envs:
-  test-ocp-cluster:                                # env name/alias
-    projectset-templates: test-ocp/templates       # path to templates dir
-    projectset-crds: test-ocp/crds                 # path to crds dir
-...
-  prod-ocp-cluster:
-    projectset-templates: common-templates
-    projectset-crds: prod-ocp/crds
+    ```
+    envs:
+    test-ocp-cluster:                                # env name/alias
+        projectset-templates: test-ocp/templates       # path to templates dir
+        projectset-crds: test-ocp/crds                 # path to crds dir
+    ...
+    prod-ocp-cluster:
+        projectset-templates: common-templates
+        projectset-crds: prod-ocp/crds
 
-```
+    ```
 
 3. Create secret with GitHub/GitLab token (for ProsetSetSync to sync CRDs from git repo)
 
-```sh
- kubectl create secret generic projectsetsync-secret \                                        
-      --namespace projectset-operator-system \                                                          
-      --from-literal=token=<base64(GIT_TOKEN)>
+    ```sh
+    kubectl create secret generic projectsetsync-secret \                                        
+        --namespace projectset-operator-system \                                                          
+        --from-literal=token=<base64(GIT_TOKEN)>
 
-```
+    ```
 
+4. Create CRD ProjectSet/ProjectSetTemplate (without GitOps)
+
+    See examples here https://github.com/migrx-io/projectset-operator/tree/main/config/samples
+
+    ```sh
+    kubectl apply -f <PATH to YAML>
+
+    ```
+
+4. Create CRD ProjectSet/ProjectSetTemplate (GitOps)
+
+    Create ProjectSync configuration
+
+    Example
+
+    ```
+
+    apiVersion: project.migrx.io/v1alpha1
+    kind: ProjectSetSync
+    metadata:
+    labels:
+        app.kubernetes.io/name: projectsetsync
+        app.kubernetes.io/instance: projectsetsync-instance
+        app.kubernetes.io/part-of: projectset-operator
+        app.kubernetes.io/managed-by: kustomize
+        app.kubernetes.io/created-by: projectset-operator
+    name: test-ocp-cluster
+    spec:
+    gitRepo: https://github.com/migrx-io/projectset-crds.git    # git uri
+    envName: test-ocp-cluster                                   # env name from projectsets.yaml (see git repo structure)
+    gitBranch: main                                             # branch name
+    syncSecInterval: 10                                         # pull sync interval
+    confFile: projectsets.yaml                                  # path to git config env file  (by default projectsets.yaml)
+
+
+    ```
+
+    ```sh
+    kubectl apply -f <PATH to YAML>
+
+    ```
+
+    When you push CRDs to repo (crds/template) operator will sync it and create resources
 
 
 ## Development
