@@ -201,6 +201,8 @@ func (r *ProjectSetSyncReconciler) Reconcile(ctx context.Context, req ctrl.Reque
 
 	token := os.Getenv("GIT_TOKEN")
 
+	log.Info("GIT_TOKEN env", "token", token)
+
 	// Check if the directory exists
 	if _, err := os.Stat(localDir); os.IsNotExist(err) {
 		log.Info("Directory does not existn", "dir", localDir)
