@@ -2283,6 +2283,11 @@ spec:
         - --leader-elect
         command:
         - /manager
+        env:
+        - name: GIT_TOKEN
+          secretKeyRef:
+            key: token
+            name: projectsetsync-secret
         image: migrx/projectset-operator:v0.1.0
         livenessProbe:
           httpGet:
