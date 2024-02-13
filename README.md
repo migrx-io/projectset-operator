@@ -24,6 +24,13 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 
     ```
 
+    ```
+    TOKEN=$(cat ../projectset-crds/.secret|base64)
+    kubectl create secret generic projectsetsync-secret --namespace projectset-operator-system --from-literal=token=$TOKEN
+
+    ```
+
+
 3. Install Operator and all CRs
 
     ```sh
