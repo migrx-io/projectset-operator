@@ -136,7 +136,7 @@ If you are editing the API definitions, generate the manifests such as CRs or CR
 ```sh
 make generate
 make manifests
-make helm  # generate new all-in-one manifests.yaml
+make allinone IMG=migrx/projectset-operator:v0.1.0  # generate new all-in-one manifests.yaml
 ```
 
 **NOTE:** Run `make --help` for more information on all potential `make` targets
@@ -156,7 +156,7 @@ make uninstall
 1. Build and push your image to the location specified by `IMG`:
 
 ```sh
-make docker-build docker-push IMG=<some-registry>/projectset-operator:tag
+make docker-build docker-push IMG=migrx/projectset-operator:v0.1.0
 ```
 
 ## License
