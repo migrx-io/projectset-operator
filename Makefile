@@ -265,10 +265,8 @@ endif
 
 .PHONY: allinone
 allinone: manifests kustomize
-	$(KUSTOMIZE) build config/crd > config/manifests.yaml
-	echo "---" >> config/manifests.yaml
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG} && cd -
-	$(KUSTOMIZE) build config/default >> config/manifests.yaml
+	$(KUSTOMIZE) build config/default > config/manifests.yaml
 
 # A comma-separated list of bundle images (e.g. make catalog-build BUNDLE_IMGS=example.com/operator-bundle:v0.1.0,example.com/operator-bundle:v0.2.0).
 # These images MUST exist in a registry and be pull-able.

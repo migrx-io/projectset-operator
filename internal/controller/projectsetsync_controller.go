@@ -59,6 +59,8 @@ type ProjectSetSyncReconciler struct {
 }
 
 //+kubebuilder:rbac:groups=project.migrx.io,resources=projectsetsyncs,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=project.migrx.io,resources=projectsets,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=project.migrx.io,resources=projectsettemplates,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=project.migrx.io,resources=projectsetsyncs/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=project.migrx.io,resources=projectsetsyncs/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch

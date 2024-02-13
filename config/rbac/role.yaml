@@ -37,17 +37,6 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - networkpolicy
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - resourcequotas
   verbs:
   - create
@@ -57,20 +46,9 @@ rules:
   - update
   - watch
 - apiGroups:
-  - ""
+  - networking.k8s.io
   resources:
-  - role
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - update
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - rolebinding
+  - networkpolicies
   verbs:
   - create
   - delete
@@ -107,18 +85,6 @@ rules:
 - apiGroups:
   - project.migrx.io
   resources:
-  - projectsetstemplate
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - project.migrx.io
-  resources:
   - projectsetsyncs
   verbs:
   - create
@@ -142,3 +108,37 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - project.migrx.io
+  resources:
+  - projectsettemplates
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - rolebindings
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - update
+  - watch
+- apiGroups:
+  - rbac.authorization.k8s.io
+  resources:
+  - roles
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - update
+  - watch

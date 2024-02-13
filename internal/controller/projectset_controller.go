@@ -61,16 +61,16 @@ type ProjectSetReconciler struct {
 }
 
 //+kubebuilder:rbac:groups=project.migrx.io,resources=projectsets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=project.migrx.io,resources=projectsetstemplate,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=project.migrx.io,resources=projectsettemplates,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=project.migrx.io,resources=projectsets/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=project.migrx.io,resources=projectsets/finalizers,verbs=update
 //+kubebuilder:rbac:groups=core,resources=events,verbs=create;patch
 //+kubebuilder:rbac:groups=core,resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=core,resources=resourcequotas,verbs=get;list;watch;create;update;delete
 //+kubebuilder:rbac:groups=core,resources=limitranges,verbs=get;list;watch;create;update;delete
-//+kubebuilder:rbac:groups=core,resources=networkpolicy,verbs=get;list;watch;create;update;delete
-//+kubebuilder:rbac:groups=core,resources=role,verbs=get;list;watch;create;update;delete
-//+kubebuilder:rbac:groups=core,resources=rolebinding,verbs=get;list;watch;create;update;delete
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;delete
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;delete
+//+kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

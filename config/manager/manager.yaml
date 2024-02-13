@@ -104,5 +104,5 @@ spec:
           requests:
             cpu: 500m
             memory: 512Mi
-      serviceAccountName: controller-manager
+      serviceAccountName: projectset-operator-controller-manager
       terminationGracePeriodSeconds: 10
