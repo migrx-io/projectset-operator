@@ -11,7 +11,7 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 1. Create operator namespace
 
     ```sh
-    kubectl create ns generic projectset-operator-system
+    kubectl create ns projectset-operator-system
 
     ```
 
