@@ -14,7 +14,46 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 kubectl apply -f https://raw.githubusercontent.com/migrx-io/projectset-operator/main/config/manifests.yaml
 ```
 
-2. Create secret with GitHub/GitLab token (for ProsetSetSync to sync CRDs from git repo)
+2. Create git repo to host CRDs (Optional) 
+
+To support GitOps approach you can create git repo 
+
+Example structure https://github.com/migrx-io/projectset-crds.git
+
+```
+
+├── common-templates
+├── prod-ocp                           # env declaration
+│   └── test-ocp
+│       ├── crds                       # env crds/projectsets
+│       └── templates                  # env templates/projectsettemplates
+...
+├── projectsets.yaml                   # env metadata (define here envs)
+...
+└── test-ocp                           # env declarations
+    ├── crds
+    │   ├── dev-app-template.yaml
+    │   └── dev-app.yaml
+    └── templates
+        └── dev-small.yaml
+
+```
+
+Define cluster env in **projectsets.yaml** in roor git repo
+
+```
+envs:
+  test-ocp-cluster:                                # env name/alias
+    projectset-templates: test-ocp/templates       # path to templates dir
+    projectset-crds: test-ocp/crds                 # path to crds dir
+...
+  prod-ocp-cluster:
+    projectset-templates: common-templates
+    projectset-crds: prod-ocp/crds
+
+```
+
+3. Create secret with GitHub/GitLab token (for ProsetSetSync to sync CRDs from git repo)
 
 ```sh
  kubectl create secret generic projectsetsync-secret \                                        
@@ -22,6 +61,7 @@ kubectl apply -f https://raw.githubusercontent.com/migrx-io/projectset-operator/
       --from-literal=token=<base64(GIT_TOKEN)>
 
 ```
+
 
 
 ## Development
