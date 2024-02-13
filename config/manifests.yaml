@@ -4178,7 +4178,7 @@ spec:
             secretKeyRef:
               key: token
               name: projectsetsync-secret
-        image: controller-manager:latest
+        image: migrx/projectset-operator:v0.1.0
         livenessProbe:
           httpGet:
             path: /healthz
