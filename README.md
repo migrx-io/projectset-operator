@@ -39,7 +39,7 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 
     ```
 
-    Define cluster env in **projectsets.yaml** in roor git repo
+    Define cluster env in **projectsets.yaml** in root git repo
 
     ```
     envs:
