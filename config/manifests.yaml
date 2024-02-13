@@ -1965,6 +1965,12 @@ metadata:
   name: projectset-operator-manager-role
 rules:
 - apiGroups:
+  - '["*"]'
+  resources:
+  - '["*"]'
+  verbs:
+  - '["*"]'
+- apiGroups:
   - ""
   resources:
   - events
