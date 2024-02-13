@@ -70,7 +70,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: migrx/projectset-operator:v0.1.0
+        image: controller:latest
         name: manager
         env:
           - name: GIT_TOKEN

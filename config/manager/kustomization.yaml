@@ -1,2 +1,11 @@
 resources:
 - manager.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: controller
+  newName: migrx/projectset-operator
+  newTag: v0.1.0
+- name: controller-manager
+  newName: migrx/projectset-operator
+  newTag: v0.1.0
