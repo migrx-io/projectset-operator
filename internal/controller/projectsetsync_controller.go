@@ -36,6 +36,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	projectv1alpha1 "github.com/migrx-io/projectset-operator/api/v1alpha1"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing"
@@ -526,6 +527,9 @@ func (r *ProjectSetSyncReconciler) applyProjectSetTemplate(ctx context.Context, 
 
 		log.Info("Parse k8s obj", "obj", obj)
 
+		// fix for nil required limits
+		obj.Spec.LimitRange.Limits = getOrDefaultTemplateLimitRange(obj)
+
 		// Apply the Custom Resource
 		err = r.createOrUpdateProjectSetTemplate(ctx, req, obj)
 		if err != nil {
@@ -746,6 +750,26 @@ func (r *ProjectSetSyncReconciler) setStatus(ctx context.Context,
 	// }
 
 	return nil
+}
+
+// Get default limits limitRange
+// hack to avoid validation issue
+func getOrDefaultTemplateLimitRange(instance *projectv1alpha1.ProjectSetTemplate) []corev1.LimitRangeItem {
+
+	log.Info("Ckeck limits in LimitRange and set")
+
+	if instance.Spec.LimitRange.Limits == nil || len(instance.Spec.LimitRange.Limits) == 0 {
+
+		limits := []corev1.LimitRangeItem{}
+
+		log.Info("LimitRange is not defined. Create stub")
+
+		return limits
+
+	}
+
+	return instance.Spec.LimitRange.Limits
+
 }
 
 // SetupWithManager sets up the controller with the Manager.
