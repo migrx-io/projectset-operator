@@ -976,7 +976,7 @@ func getOrDefaultLimitRange(instance *projectv1alpha1.ProjectSet) []corev1.Limit
 
 	log.Info("Ckeck limits in LimitRange and set")
 
-	if instance.Spec.LimitRange.Limits == nil {
+	if instance.Spec.LimitRange.Limits == nil || len(instance.Spec.LimitRange.Limits) == 0 {
 
 		limits := []corev1.LimitRangeItem{}
 
