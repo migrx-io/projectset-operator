@@ -15,7 +15,7 @@ spec:
   annotations:
     app.kubernetes.io/template: dev-small
 
-  roleRules:
+  roles:
     developer:
       - apiGroups:
           - ""
@@ -57,7 +57,7 @@ spec:
           - statefulsets
         verbs: ["*"]
 
-  groupPermissions:
+  roleBindings:
     admin:
       - kind: "Group"
         name: "developer"
@@ -90,7 +90,7 @@ spec:
           memory: "50Mi"
         type: Container
 
-  policySpec:
+  networkPolicy:
 
     allow-dns:
       podSelector:

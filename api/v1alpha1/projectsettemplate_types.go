@@ -46,13 +46,13 @@ type ProjectSetTemplateSpec struct {
 	LimitRange v1.LimitRangeSpec `json:"limitRange,omitempty"`
 
 	// RBAC Role Rules
-	RoleRules map[string][]rbacv1.PolicyRule `json:"roleRules,omitempty"`
+	Roles map[string][]rbacv1.PolicyRule `json:"roles,omitempty"`
 
 	// User permissions
-	GroupPermissions map[string][]rbacv1.Subject `json:"groupPermissions,omitempty"`
+	RoleBindings map[string][]rbacv1.Subject `json:"roleBindings,omitempty"`
 
 	// Network Policy specitifation
-	PolicySpec map[string]networkingv1.NetworkPolicySpec `json:"policySpec,omitempty"`
+	NetworkPolicy map[string]networkingv1.NetworkPolicy `json:"NetworkPolicy,omitempty"`
 }
 
 // ProjectSetTemplateStatus defines the observed state of ProjectSetTemplate

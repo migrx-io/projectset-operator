@@ -42,128 +42,9 @@ spec:
           spec:
             description: ProjectSetTemplateSpec defines the desired state of ProjectSetTemplate
             properties:
-              annotations:
+              NetworkPolicy:
                 additionalProperties:
-                  type: string
-                description: Custom namespace annotations
-                type: object
-              groupPermissions:
-                additionalProperties:
-                  items:
-                    description: Subject contains a reference to the object or user
-                      identities a role binding applies to.  This can either hold
-                      a direct API object reference, or a value for non-objects such
-                      as user and group names.
-                    properties:
-                      apiGroup:
-                        description: APIGroup holds the API group of the referenced
-                          subject. Defaults to "" for ServiceAccount subjects. Defaults
-                          to "rbac.authorization.k8s.io" for User and Group subjects.
-                        type: string
-                      kind:
-                        description: Kind of object being referenced. Values defined
-                          by this API group are "User", "Group", and "ServiceAccount".
-                          If the Authorizer does not recognized the kind value, the
-                          Authorizer should report an error.
-                        type: string
-                      name:
-                        description: Name of the object being referenced.
-                        type: string
-                      namespace:
-                        description: Namespace of the referenced object.  If the object
-                          kind is non-namespace, such as "User" or "Group", and this
-                          value is not empty the Authorizer should report an error.
-                        type: string
-                    required:
-                    - kind
-                    - name
-                    type: object
-                    x-kubernetes-map-type: atomic
-                  type: array
-                description: User permissions
-                type: object
-              labels:
-                additionalProperties:
-                  type: string
-                description: Custom namespace labels
-                type: object
-              limitRange:
-                description: LimitRange specification
-                properties:
-                  limits:
-                    description: Limits is the list of LimitRangeItem objects that
-                      are enforced.
-                    items:
-                      description: LimitRangeItem defines a min/max usage limit for
-                        any resource that matches on kind.
-                      properties:
-                        default:
-                          additionalProperties:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                          description: Default resource requirement limit value by
-                            resource name if resource limit is omitted.
-                          type: object
-                        defaultRequest:
-                          additionalProperties:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                          description: DefaultRequest is the default resource requirement
-                            request value by resource name if resource request is
-                            omitted.
-                          type: object
-                        max:
-                          additionalProperties:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                          description: Max usage constraints on this kind by resource
-                            name.
-                          type: object
-                        maxLimitRequestRatio:
-                          additionalProperties:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                          description: MaxLimitRequestRatio if specified, the named
-                            resource must have a request and limit that are both non-zero
-                            where limit divided by request is less than or equal to
-                            the enumerated value; this represents the max burst for
-                            the named resource.
-                          type: object
-                        min:
-                          additionalProperties:
-                            anyOf:
-                            - type: integer
-                            - type: string
-                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
-                            x-kubernetes-int-or-string: true
-                          description: Min usage constraints on this kind by resource
-                            name.
-                          type: object
-                        type:
-                          description: Type of resource that this limit applies to.
-                          type: string
-                      required:
-                      - type
-                      type: object
-                    type: array
-                required:
-                - limits
-                type: object
-              policySpec:
-                additionalProperties:
-                  description: NetworkPolicySpec provides the specification of a NetworkPolicy
+                  description: NetworkPolicy provides the specification of a NetworkPolicy
                   properties:
                     egress:
                       description: egress is a list of egress rules to be applied
@@ -178,7 +59,7 @@ spec:
                       items:
                         description: NetworkPolicyEgressRule describes a particular
                           set of traffic that is allowed out of pods matched by a
-                          NetworkPolicySpec's podSelector. The traffic must match
+                          NetworkPolicy's podSelector. The traffic must match
                           both ports and to. This type is beta-level in 1.8
                         properties:
                           ports:
@@ -392,7 +273,7 @@ spec:
                       items:
                         description: NetworkPolicyIngressRule describes a particular
                           set of traffic that is allowed to the pods matched by a
-                          NetworkPolicySpec's podSelector. The traffic must match
+                          NetworkPolicy's podSelector. The traffic must match
                           both ports and from.
                         properties:
                           from:
@@ -669,6 +550,90 @@ spec:
                   type: object
                 description: Network Policy specitifation
                 type: object
+              annotations:
+                additionalProperties:
+                  type: string
+                description: Custom namespace annotations
+                type: object
+              labels:
+                additionalProperties:
+                  type: string
+                description: Custom namespace labels
+                type: object
+              limitRange:
+                description: LimitRange specification
+                properties:
+                  limits:
+                    description: Limits is the list of LimitRangeItem objects that
+                      are enforced.
+                    items:
+                      description: LimitRangeItem defines a min/max usage limit for
+                        any resource that matches on kind.
+                      properties:
+                        default:
+                          additionalProperties:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: Default resource requirement limit value by
+                            resource name if resource limit is omitted.
+                          type: object
+                        defaultRequest:
+                          additionalProperties:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: DefaultRequest is the default resource requirement
+                            request value by resource name if resource request is
+                            omitted.
+                          type: object
+                        max:
+                          additionalProperties:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: Max usage constraints on this kind by resource
+                            name.
+                          type: object
+                        maxLimitRequestRatio:
+                          additionalProperties:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: MaxLimitRequestRatio if specified, the named
+                            resource must have a request and limit that are both non-zero
+                            where limit divided by request is less than or equal to
+                            the enumerated value; this represents the max burst for
+                            the named resource.
+                          type: object
+                        min:
+                          additionalProperties:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            pattern: ^(\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\+|-)?(([0-9]+(\.[0-9]*)?)|(\.[0-9]+))))?$
+                            x-kubernetes-int-or-string: true
+                          description: Min usage constraints on this kind by resource
+                            name.
+                          type: object
+                        type:
+                          description: Type of resource that this limit applies to.
+                          type: string
+                      required:
+                      - type
+                      type: object
+                    type: array
+                required:
+                - limits
+                type: object
               resourceQuota:
                 description: ResourceQuota specification
                 properties:
@@ -732,7 +697,42 @@ spec:
                       type: string
                     type: array
                 type: object
-              roleRules:
+              roleBindings:
+                additionalProperties:
+                  items:
+                    description: Subject contains a reference to the object or user
+                      identities a role binding applies to.  This can either hold
+                      a direct API object reference, or a value for non-objects such
+                      as user and group names.
+                    properties:
+                      apiGroup:
+                        description: APIGroup holds the API group of the referenced
+                          subject. Defaults to "" for ServiceAccount subjects. Defaults
+                          to "rbac.authorization.k8s.io" for User and Group subjects.
+                        type: string
+                      kind:
+                        description: Kind of object being referenced. Values defined
+                          by this API group are "User", "Group", and "ServiceAccount".
+                          If the Authorizer does not recognized the kind value, the
+                          Authorizer should report an error.
+                        type: string
+                      name:
+                        description: Name of the object being referenced.
+                        type: string
+                      namespace:
+                        description: Namespace of the referenced object.  If the object
+                          kind is non-namespace, such as "User" or "Group", and this
+                          value is not empty the Authorizer should report an error.
+                        type: string
+                    required:
+                    - kind
+                    - name
+                    type: object
+                    x-kubernetes-map-type: atomic
+                  type: array
+                description: User permissions
+                type: object
+              roles:
                 additionalProperties:
                   items:
                     description: PolicyRule holds information that describes a policy

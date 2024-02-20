@@ -17,7 +17,7 @@ spec:
     app.kubernetes.io/name: dev-app                                                                            
     app.kubernetes.io/lang: golang
 
-  roleRules:
+  roles:
     developer:
       - apiGroups:
           - ""
@@ -64,7 +64,7 @@ spec:
           - statefulsets
         verbs: ["*"]
 
-  groupPermissions:
+  roleBindings:
     admin:
       - kind: "Group"
         name: "developer"

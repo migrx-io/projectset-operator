@@ -62,7 +62,7 @@ spec:
                   type: string
                 description: Custom namespace annotations
                 type: object
-              groupPermissions:
+              roleBindings:
                 additionalProperties:
                   items:
                     description: Subject contains a reference to the object or user
@@ -179,9 +179,9 @@ spec:
               namespace:
                 description: Namespace name
                 type: string
-              policySpec:
+              networkPolicy:
                 additionalProperties:
-                  description: NetworkPolicySpec provides the specification of a NetworkPolicy
+                  description: NetworkPolicy provides the specification of a NetworkPolicy
                   properties:
                     egress:
                       description: egress is a list of egress rules to be applied
@@ -196,7 +196,7 @@ spec:
                       items:
                         description: NetworkPolicyEgressRule describes a particular
                           set of traffic that is allowed out of pods matched by a
-                          NetworkPolicySpec's podSelector. The traffic must match
+                          NetworkPolicy's podSelector. The traffic must match
                           both ports and to. This type is beta-level in 1.8
                         properties:
                           ports:
@@ -410,7 +410,7 @@ spec:
                       items:
                         description: NetworkPolicyIngressRule describes a particular
                           set of traffic that is allowed to the pods matched by a
-                          NetworkPolicySpec's podSelector. The traffic must match
+                          NetworkPolicy's podSelector. The traffic must match
                           both ports and from.
                         properties:
                           from:
@@ -750,7 +750,7 @@ spec:
                       type: string
                     type: array
                 type: object
-              roleRules:
+              roles:
                 additionalProperties:
                   items:
                     description: PolicyRule holds information that describes a policy
@@ -1083,7 +1083,7 @@ spec:
                   type: string
                 description: Custom namespace annotations
                 type: object
-              groupPermissions:
+              roleBindings:
                 additionalProperties:
                   items:
                     description: Subject contains a reference to the object or user
@@ -1197,9 +1197,9 @@ spec:
                 required:
                 - limits
                 type: object
-              policySpec:
+              networkPolicy:
                 additionalProperties:
-                  description: NetworkPolicySpec provides the specification of a NetworkPolicy
+                  description: NetworkPolicy provides the specification of a NetworkPolicy
                   properties:
                     egress:
                       description: egress is a list of egress rules to be applied
@@ -1214,7 +1214,7 @@ spec:
                       items:
                         description: NetworkPolicyEgressRule describes a particular
                           set of traffic that is allowed out of pods matched by a
-                          NetworkPolicySpec's podSelector. The traffic must match
+                          NetworkPolicy's podSelector. The traffic must match
                           both ports and to. This type is beta-level in 1.8
                         properties:
                           ports:
@@ -1428,7 +1428,7 @@ spec:
                       items:
                         description: NetworkPolicyIngressRule describes a particular
                           set of traffic that is allowed to the pods matched by a
-                          NetworkPolicySpec's podSelector. The traffic must match
+                          NetworkPolicy's podSelector. The traffic must match
                           both ports and from.
                         properties:
                           from:
@@ -1768,7 +1768,7 @@ spec:
                       type: string
                     type: array
                 type: object
-              roleRules:
+              roles:
                 additionalProperties:
                   items:
                     description: PolicyRule holds information that describes a policy

@@ -289,7 +289,7 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	//
 	// Check role rules
 	//
-	rl, err := r.createAndUpdateRoleRules(ctx, req, instance, namespaceFound)
+	rl, err := r.createAndUpdateRoles(ctx, req, instance, namespaceFound)
 
 	if err != nil {
 		return ctrl.Result{}, err
@@ -302,7 +302,7 @@ func (r *ProjectSetReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	//
 	// Check group permissions
 	//
-	rb, err := r.createAndUpdateGroupPermissions(ctx, req, instance, namespaceFound)
+	rb, err := r.createAndUpdateRoleBindings(ctx, req, instance, namespaceFound)
 
 	if err != nil {
 		return ctrl.Result{}, err
@@ -473,14 +473,14 @@ func (r *ProjectSetReconciler) checkAndDeleteRoleRule(ctx context.Context,
 //   - nil, nil  nothing's changed
 //   - nil, err  error occured
 //   - obj, nil  created/updated object
-func (r *ProjectSetReconciler) createAndUpdateGroupPermissions(ctx context.Context,
+func (r *ProjectSetReconciler) createAndUpdateRoleBindings(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
 	namespace *corev1.Namespace) (*rbacv1.RoleBinding, error) {
 
 	//check if defined in instance
-	if instance.Spec.GroupPermissions == nil {
-		log.Info("GroupPermissions is not defined")
+	if instance.Spec.RoleBindings == nil {
+		log.Info("RoleBindings is not defined")
 		//return nil, nil
 	}
 
@@ -494,7 +494,7 @@ func (r *ProjectSetReconciler) createAndUpdateGroupPermissions(ctx context.Conte
 	log.Info("existingRulesNames", "names", existingRoleBindNames)
 
 	// iterate thru rules policies
-	for groupName, roleNames := range instance.Spec.GroupPermissions {
+	for groupName, roleNames := range instance.Spec.RoleBindings {
 
 		log.Info("Working on role bind", "name", groupName)
 
@@ -564,14 +564,14 @@ func (r *ProjectSetReconciler) createAndUpdateGroupPermissions(ctx context.Conte
 //   - nil, nil  nothing's changed
 //   - nil, err  error occured
 //   - obj, nil  created/updated object
-func (r *ProjectSetReconciler) createAndUpdateRoleRules(ctx context.Context,
+func (r *ProjectSetReconciler) createAndUpdateRoles(ctx context.Context,
 	req ctrl.Request,
 	instance *projectv1alpha1.ProjectSet,
 	namespace *corev1.Namespace) (*rbacv1.Role, error) {
 
 	//check if defined in instance
-	if instance.Spec.RoleRules == nil {
-		log.Info("RoleRules is not defined")
+	if instance.Spec.Roles == nil {
+		log.Info("Roles is not defined")
 		//return nil, nil
 	}
 
@@ -580,12 +580,12 @@ func (r *ProjectSetReconciler) createAndUpdateRoleRules(ctx context.Context,
 
 	// Get existing list of policies
 
-	existingRulesNames, _ := r.roleRulesNamesForNamespace(namespace.Name)
+	existingRulesNames, _ := r.rolesNamesForNamespace(namespace.Name)
 
 	log.Info("existingRulesNames", "names", existingRulesNames)
 
 	// iterate thru rules policies
-	for ruleName, ruleSpec := range instance.Spec.RoleRules {
+	for ruleName, ruleSpec := range instance.Spec.Roles {
 
 		log.Info("Working on role rules", "name", ruleName)
 
@@ -704,8 +704,8 @@ func (r *ProjectSetReconciler) createAndUpdateNetworkPolicies(ctx context.Contex
 	//isDelete := false
 
 	//check if defined in instance
-	if instance.Spec.PolicySpec == nil {
-		log.Info("NetworkPolicySpec is not defined")
+	if instance.Spec.NetworkPolicy == nil {
+		log.Info("NetworkPolicy is not defined")
 		//return nil, nil
 		//isDelete = true
 	}
@@ -720,7 +720,7 @@ func (r *ProjectSetReconciler) createAndUpdateNetworkPolicies(ctx context.Contex
 	log.Info("existingPolicyNames", "names", existingPolicyNames)
 
 	// iterate thru network policies
-	for netName, netSpec := range instance.Spec.PolicySpec {
+	for netName, netSpec := range instance.Spec.NetworkPolicy {
 
 		log.Info("Working on network policy", "name", netName)
 
@@ -1012,7 +1012,7 @@ func (r *ProjectSetReconciler) roleBindNamesForNamespace(namespace string) (map[
 
 }
 
-func (r *ProjectSetReconciler) roleRulesNamesForNamespace(namespace string) (map[string]bool, error) {
+func (r *ProjectSetReconciler) rolesNamesForNamespace(namespace string) (map[string]bool, error) {
 
 	rulePolicyNames := make(map[string]bool)
 
@@ -1161,19 +1161,19 @@ func (r *ProjectSetReconciler) checkAndUpdateTemplate(ctx context.Context,
 			instance.Spec.LimitRange.Limits = getOrDefaultLimitRange(instance)
 		}
 
-		if instance.Spec.RoleRules == nil {
-			log.Info("RoleRules is nil, update from template")
-			instance.Spec.RoleRules = templateFound.Spec.RoleRules
+		if instance.Spec.Roles == nil {
+			log.Info("Roles is nil, update from template")
+			instance.Spec.Roles = templateFound.Spec.Roles
 		}
 
-		if instance.Spec.GroupPermissions == nil {
-			log.Info("GroupPermissions is nil, update from template")
-			instance.Spec.GroupPermissions = templateFound.Spec.GroupPermissions
+		if instance.Spec.RoleBindings == nil {
+			log.Info("RoleBindings is nil, update from template")
+			instance.Spec.RoleBindings = templateFound.Spec.RoleBindings
 		}
 
-		if instance.Spec.PolicySpec == nil {
-			log.Info("PolicySpec is nil, update from template")
-			instance.Spec.PolicySpec = templateFound.Spec.PolicySpec
+		if instance.Spec.NetworkPolicy == nil {
+			log.Info("NetworkPolicy is nil, update from template")
+			instance.Spec.NetworkPolicy = templateFound.Spec.NetworkPolicy
 		}
 
 		log.Info("checkAndUpdateTemplate", "instance", instance.Spec)
@@ -1194,13 +1194,13 @@ func (r *ProjectSetReconciler) checkAndUpdateRoleBind(ctx context.Context,
 ) error {
 
 	// equality.Semantic.DeepDerivative(desiredObj.Spec, runtimeObj.Spec)
-	log.Info("checkAndUpdateRoleBind", "spec", instance.Spec.GroupPermissions[name], "lr", lr.Subjects)
+	log.Info("checkAndUpdateRoleBind", "spec", instance.Spec.RoleBindings[name], "lr", lr.Subjects)
 
-	if !equality.Semantic.DeepDerivative(instance.Spec.GroupPermissions[name], lr.Subjects) {
+	if !equality.Semantic.DeepDerivative(instance.Spec.RoleBindings[name], lr.Subjects) {
 
 		log.Info("RoleBinding is dirreferent - update from instance")
 
-		lr.Subjects = instance.Spec.GroupPermissions[name]
+		lr.Subjects = instance.Spec.RoleBindings[name]
 
 		if err := r.Update(ctx, lr); err != nil {
 			return err
@@ -1228,13 +1228,13 @@ func (r *ProjectSetReconciler) checkAndUpdateRoleRule(ctx context.Context,
 ) error {
 
 	// equality.Semantic.DeepDerivative(desiredObj.Spec, runtimeObj.Spec)
-	log.Info("checkAndUpdateRole", "spec", instance.Spec.RoleRules[name], "lr", lr.Rules)
+	log.Info("checkAndUpdateRole", "spec", instance.Spec.Roles[name], "lr", lr.Rules)
 
-	if !equality.Semantic.DeepDerivative(instance.Spec.RoleRules[name], lr.Rules) {
+	if !equality.Semantic.DeepDerivative(instance.Spec.Roles[name], lr.Rules) {
 
 		log.Info("RoleRule is dirreferent - update from instance")
 
-		lr.Rules = instance.Spec.RoleRules[name]
+		lr.Rules = instance.Spec.Roles[name]
 
 		if err := r.Update(ctx, lr); err != nil {
 			return err
@@ -1275,7 +1275,7 @@ func (r *ProjectSetReconciler) networkPolicyNamesForNamespace(namespace string) 
 }
 
 // Netwoek Policy build logic
-func (r *ProjectSetReconciler) networkPolicyForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace, name string, spec networkingv1.NetworkPolicySpec) (*networkingv1.NetworkPolicy, error) {
+func (r *ProjectSetReconciler) networkPolicyForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace, name string, spec networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
 
 	labels := namespace.GetLabels()
 	annotations := namespace.GetAnnotations()
@@ -1309,13 +1309,13 @@ func (r *ProjectSetReconciler) checkAndUpdateNetworkPolicy(ctx context.Context,
 ) error {
 
 	// equality.Semantic.DeepDerivative(desiredObj.Spec, runtimeObj.Spec)
-	log.Info("checkAndUpdateNetworkPolicy", "spec", instance.Spec.PolicySpec[name], "lr", lr.Spec)
+	log.Info("checkAndUpdateNetworkPolicy", "spec", instance.Spec.NetworkPolicy[name], "lr", lr.Spec)
 
-	if !equality.Semantic.DeepDerivative(instance.Spec.PolicySpec[name], lr.Spec) {
+	if !equality.Semantic.DeepDerivative(instance.Spec.NetworkPolicy[name], lr.Spec) {
 
 		log.Info("NetworkPolicy is dirreferent - update from instance")
 
-		lr.Spec = instance.Spec.PolicySpec[name]
+		lr.Spec = instance.Spec.NetworkPolicy[name]
 
 		if err := r.Update(ctx, lr); err != nil {
 			return err

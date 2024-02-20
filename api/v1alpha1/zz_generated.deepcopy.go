@@ -106,8 +106,8 @@ func (in *ProjectSetSpec) DeepCopyInto(out *ProjectSetSpec) {
 	}
 	in.ResourceQuota.DeepCopyInto(&out.ResourceQuota)
 	in.LimitRange.DeepCopyInto(&out.LimitRange)
-	if in.RoleRules != nil {
-		in, out := &in.RoleRules, &out.RoleRules
+	if in.Roles != nil {
+		in, out := &in.Roles, &out.Roles
 		*out = make(map[string][]v1.PolicyRule, len(*in))
 		for key, val := range *in {
 			var outVal []v1.PolicyRule
@@ -123,8 +123,8 @@ func (in *ProjectSetSpec) DeepCopyInto(out *ProjectSetSpec) {
 			(*out)[key] = outVal
 		}
 	}
-	if in.GroupPermissions != nil {
-		in, out := &in.GroupPermissions, &out.GroupPermissions
+	if in.RoleBindings != nil {
+		in, out := &in.RoleBindings, &out.RoleBindings
 		*out = make(map[string][]v1.Subject, len(*in))
 		for key, val := range *in {
 			var outVal []v1.Subject
@@ -138,9 +138,9 @@ func (in *ProjectSetSpec) DeepCopyInto(out *ProjectSetSpec) {
 			(*out)[key] = outVal
 		}
 	}
-	if in.PolicySpec != nil {
-		in, out := &in.PolicySpec, &out.PolicySpec
-		*out = make(map[string]networkingv1.NetworkPolicySpec, len(*in))
+	if in.NetworkPolicy != nil {
+		in, out := &in.NetworkPolicy, &out.NetworkPolicy
+		*out = make(map[string]networkingv1.NetworkPolicy, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
 		}
@@ -353,8 +353,8 @@ func (in *ProjectSetTemplateSpec) DeepCopyInto(out *ProjectSetTemplateSpec) {
 	}
 	in.ResourceQuota.DeepCopyInto(&out.ResourceQuota)
 	in.LimitRange.DeepCopyInto(&out.LimitRange)
-	if in.RoleRules != nil {
-		in, out := &in.RoleRules, &out.RoleRules
+	if in.Roles != nil {
+		in, out := &in.Roles, &out.Roles
 		*out = make(map[string][]v1.PolicyRule, len(*in))
 		for key, val := range *in {
 			var outVal []v1.PolicyRule
@@ -370,8 +370,8 @@ func (in *ProjectSetTemplateSpec) DeepCopyInto(out *ProjectSetTemplateSpec) {
 			(*out)[key] = outVal
 		}
 	}
-	if in.GroupPermissions != nil {
-		in, out := &in.GroupPermissions, &out.GroupPermissions
+	if in.RoleBindings != nil {
+		in, out := &in.RoleBindings, &out.RoleBindings
 		*out = make(map[string][]v1.Subject, len(*in))
 		for key, val := range *in {
 			var outVal []v1.Subject
@@ -385,9 +385,9 @@ func (in *ProjectSetTemplateSpec) DeepCopyInto(out *ProjectSetTemplateSpec) {
 			(*out)[key] = outVal
 		}
 	}
-	if in.PolicySpec != nil {
-		in, out := &in.PolicySpec, &out.PolicySpec
-		*out = make(map[string]networkingv1.NetworkPolicySpec, len(*in))
+	if in.NetworkPolicy != nil {
+		in, out := &in.NetworkPolicy, &out.NetworkPolicy
+		*out = make(map[string]networkingv1.NetworkPolicy, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
 		}
