@@ -140,7 +140,7 @@ func (in *ProjectSetSpec) DeepCopyInto(out *ProjectSetSpec) {
 	}
 	if in.NetworkPolicy != nil {
 		in, out := &in.NetworkPolicy, &out.NetworkPolicy
-		*out = make(map[string]networkingv1.NetworkPolicy, len(*in))
+		*out = make(map[string]networkingv1.NetworkPolicySpec, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
 		}
@@ -387,7 +387,7 @@ func (in *ProjectSetTemplateSpec) DeepCopyInto(out *ProjectSetTemplateSpec) {
 	}
 	if in.NetworkPolicy != nil {
 		in, out := &in.NetworkPolicy, &out.NetworkPolicy
-		*out = make(map[string]networkingv1.NetworkPolicy, len(*in))
+		*out = make(map[string]networkingv1.NetworkPolicySpec, len(*in))
 		for key, val := range *in {
 			(*out)[key] = *val.DeepCopy()
 		}

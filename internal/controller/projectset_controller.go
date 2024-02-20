@@ -1275,7 +1275,7 @@ func (r *ProjectSetReconciler) networkPolicyNamesForNamespace(namespace string) 
 }
 
 // Netwoek Policy build logic
-func (r *ProjectSetReconciler) networkPolicyForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace, name string, spec networkingv1.NetworkPolicy) (*networkingv1.NetworkPolicy, error) {
+func (r *ProjectSetReconciler) networkPolicyForNamespace(instance *projectv1alpha1.ProjectSet, namespace *corev1.Namespace, name string, spec networkingv1.NetworkPolicySpec) (*networkingv1.NetworkPolicy, error) {
 
 	labels := namespace.GetLabels()
 	annotations := namespace.GetAnnotations()

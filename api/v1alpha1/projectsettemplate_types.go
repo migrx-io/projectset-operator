@@ -52,7 +52,7 @@ type ProjectSetTemplateSpec struct {
 	RoleBindings map[string][]rbacv1.Subject `json:"roleBindings,omitempty"`
 
 	// Network Policy specitifation
-	NetworkPolicy map[string]networkingv1.NetworkPolicy `json:"NetworkPolicy,omitempty"`
+	NetworkPolicy map[string]networkingv1.NetworkPolicySpec `json:"networkPolicy,omitempty"`
 }
 
 // ProjectSetTemplateStatus defines the observed state of ProjectSetTemplate
