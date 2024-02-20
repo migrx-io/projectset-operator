@@ -13,6 +13,6 @@ spec:
   labels:
     app: frontend
     stage: dev
-  annotations:                                                                                                 
-    app.kubernetes.io/name: dev-app                                                                            
+  annotations:
+    app.kubernetes.io/name: dev-app
     app.kubernetes.io/lang: golang  
