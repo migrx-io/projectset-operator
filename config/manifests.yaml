@@ -2306,7 +2306,7 @@ spec:
             secretKeyRef:
               key: token
               name: projectsetsync-secret
-        image: migrx/projectset-operator:v0.1.0
+        image: quay.io/migrx/projectset-operator:v0.1.0
         imagePullPolicy: Always
         livenessProbe:
           httpGet:
